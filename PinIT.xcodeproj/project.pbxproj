@@ -10,6 +10,9 @@
 		6520E61476279CAA2DC00263 /* Pods_PinIT.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 85B864250794BEA467FA5A36 /* Pods_PinIT.framework */; };
 		95610E632C0DA77D002C3406 /* MapViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95610E622C0DA77D002C3406 /* MapViewController.swift */; };
 		9582186A2C0E072C00BC4E5D /* API.plist in Resources */ = {isa = PBXBuildFile; fileRef = 958218692C0E072C00BC4E5D /* API.plist */; };
+		958218702C0E1F0D00BC4E5D /* ListViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9582186F2C0E1F0D00BC4E5D /* ListViewController.swift */; };
+		958218772C0E202300BC4E5D /* LocationCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 958218752C0E202300BC4E5D /* LocationCell.swift */; };
+		958218782C0E202300BC4E5D /* LocationCell.xib in Resources */ = {isa = PBXBuildFile; fileRef = 958218762C0E202300BC4E5D /* LocationCell.xib */; };
 		95D512172C0D9FBB00007338 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95D512162C0D9FBB00007338 /* AppDelegate.swift */; };
 		95D512192C0D9FBB00007338 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95D512182C0D9FBB00007338 /* SceneDelegate.swift */; };
 		95D5121B2C0D9FBB00007338 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95D5121A2C0D9FBB00007338 /* ViewController.swift */; };
@@ -23,6 +26,9 @@
 		85B864250794BEA467FA5A36 /* Pods_PinIT.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_PinIT.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		95610E622C0DA77D002C3406 /* MapViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MapViewController.swift; path = ../MapViewController.swift; sourceTree = "<group>"; };
 		958218692C0E072C00BC4E5D /* API.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = API.plist; sourceTree = "<group>"; };
+		9582186F2C0E1F0D00BC4E5D /* ListViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListViewController.swift; sourceTree = "<group>"; };
+		958218752C0E202300BC4E5D /* LocationCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationCell.swift; sourceTree = "<group>"; };
+		958218762C0E202300BC4E5D /* LocationCell.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = LocationCell.xib; sourceTree = "<group>"; };
 		95D512132C0D9FBB00007338 /* PinIT.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PinIT.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		95D512162C0D9FBB00007338 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		95D512182C0D9FBB00007338 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
@@ -84,6 +90,9 @@
 				95D512212C0D9FBC00007338 /* LaunchScreen.storyboard */,
 				95D512242C0D9FBC00007338 /* Info.plist */,
 				958218692C0E072C00BC4E5D /* API.plist */,
+				9582186F2C0E1F0D00BC4E5D /* ListViewController.swift */,
+				958218752C0E202300BC4E5D /* LocationCell.swift */,
+				958218762C0E202300BC4E5D /* LocationCell.xib */,
 			);
 			path = PinIT;
 			sourceTree = "<group>";
@@ -157,6 +166,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				958218782C0E202300BC4E5D /* LocationCell.xib in Resources */,
 				95D512202C0D9FBC00007338 /* Assets.xcassets in Resources */,
 				9582186A2C0E072C00BC4E5D /* API.plist in Resources */,
 				95D512232C0D9FBC00007338 /* Base in Resources */,
@@ -213,9 +223,11 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				958218772C0E202300BC4E5D /* LocationCell.swift in Sources */,
 				95D5121B2C0D9FBB00007338 /* ViewController.swift in Sources */,
 				95D512172C0D9FBB00007338 /* AppDelegate.swift in Sources */,
 				95D512192C0D9FBB00007338 /* SceneDelegate.swift in Sources */,
+				958218702C0E1F0D00BC4E5D /* ListViewController.swift in Sources */,
 				95610E632C0DA77D002C3406 /* MapViewController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
