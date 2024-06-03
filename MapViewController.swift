@@ -11,6 +11,7 @@ import NMapsGeometry
 import CoreLocation
 import Alamofire
 import SwiftyJSON
+import Foundation
 
 
 extension Bundle {
@@ -41,6 +42,24 @@ extension Bundle {
         return key
     }
 }
+
+class LocationManager { // 헬퍼 
+    static let shared = LocationManager()
+    
+    private init() {}
+    
+    func saveLocations(locations: [[String: Double]]) {
+        var savedLocations = UserDefaults.standard.array(forKey: "savedMarkerLocations") as? [[String: Double]] ?? []
+        savedLocations.append(contentsOf: locations)
+        UserDefaults.standard.set(savedLocations, forKey: "savedMarkerLocations")
+        UserDefaults.standard.synchronize()
+    }
+    
+    func loadLocations() -> [[String: Double]] {
+        return UserDefaults.standard.array(forKey: "savedMarkerLocations") as? [[String: Double]] ?? []
+    }
+}
+
 
 class MapViewController: UIViewController, CLLocationManagerDelegate, NMFMapViewTouchDelegate {
     
@@ -129,6 +148,12 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, NMFMapView
             let lat = location["latitude"] ?? 0.0
             let lng = location["longitude"] ?? 0.0
             let marker = NMFMarker(position: NMGLatLng(lat: lat, lng: lng))
+            
+            // 마커 색상 및 크기 설정
+                    marker.iconTintColor = UIColor.blue  // 원하는 색상으로 변경
+                    marker.width = 24  // 원하는 너비로 변경
+                    marker.height = 34  // 원하는 높이로 변경
+            
             marker.touchHandler = { [weak self] overlay -> Bool in
                 self?.handleMarkerTap(marker: overlay as! NMFMarker)
                 return true
@@ -201,7 +226,8 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, NMFMapView
         
         // InfoWindow 인스턴스 생성 및 구성
         let infoWindow = NMFInfoWindow()
-        let dataSource = NMFInfoWindowDefaultTextSource.data()
+        let dataSource = CustomInfoWindowDataSource(title: address)
+            infoWindow.dataSource = dataSource
         dataSource.title = address
         infoWindow.dataSource = dataSource
         infoWindow.position = position
@@ -212,4 +238,34 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, NMFMapView
     }
     
     
+}
+
+class CustomInfoWindowDataSource: NSObject, NMFOverlayImageDataSource {
+    var title: String
+
+    init(title: String) {
+        self.title = title
+    }
+
+    func view(with overlay: NMFOverlay) -> UIView {
+        let label = UILabel()
+        label.text = title
+        label.textAlignment = .center
+        label.font = UIFont.systemFont(ofSize: 12) // 글씨 크기 설정
+        label.backgroundColor = UIColor.white
+        label.textColor = UIColor.black
+        label.numberOfLines = 0
+        label.sizeToFit()
+        
+        // 패딩 추가
+        let padding: CGFloat = 8
+        let paddedLabel = UIView(frame: CGRect(x: 0, y: 0, width: label.frame.width + padding * 2, height: label.frame.height + padding * 2))
+        paddedLabel.backgroundColor = UIColor.white
+        paddedLabel.layer.cornerRadius = 8
+        paddedLabel.clipsToBounds = true
+        paddedLabel.addSubview(label)
+        label.center = paddedLabel.center
+
+        return paddedLabel
+    }
 }
