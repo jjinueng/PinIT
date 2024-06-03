@@ -1,0 +1,13 @@
+//
+//  Config.xcconfig
+//  PinIT
+//
+//  Created by 김지윤 on 6/3/24.
+//
+
+// Configuration settings file format documentation can be found at:
+// https://help.apple.com/xcode/#/dev745c5c974
+
+NMapID = 2mguvam1y2
+NMAPKEY = P3X3v7qkyk6c171YXGy3ZK8pmAVWlUWS4Vp4RLfE
+
