@@ -19,6 +19,8 @@ class ListViewController: UIViewController, UICollectionViewDataSource, UICollec
     override func viewDidLoad() {
         super.viewDidLoad()
         
+        NotificationCenter.default.addObserver(self, selector: #selector(updateLocationList), name: .didSaveLocation, object: nil)
+        
         // UICollectionView 설정
         collectionView.dataSource = self
         collectionView.delegate = self
@@ -34,6 +36,17 @@ class ListViewController: UIViewController, UICollectionViewDataSource, UICollec
         convertLocationsToAddresses(locations: locations)
     }
     
+    @objc func updateLocationList() {
+        // 새로 저장된 위치 데이터 불러오기
+        locations = LocationManager.shared.loadLocations()
+        
+        // 주소 목록 초기화 및 새로 변환
+        addresses.removeAll()
+        convertLocationsToAddresses(locations: locations)
+    
+    }
+    
+
     func convertLocationsToAddresses(locations: [[String: Double]]) {
         for location in locations {
             let lat = location["latitude"] ?? 0.0

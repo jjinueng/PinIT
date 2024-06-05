@@ -43,6 +43,10 @@ extension Bundle {
     }
 }
 
+extension Notification.Name {
+    static let didSaveLocation = Notification.Name("didSaveLocation")
+}
+
 class LocationManager { // 헬퍼 
     static let shared = LocationManager()
     
@@ -63,6 +67,7 @@ class LocationManager { // 헬퍼
 
 class MapViewController: UIViewController, CLLocationManagerDelegate, NMFMapViewTouchDelegate, UISearchBarDelegate {
     
+    
     let locationManager = CLLocationManager()
     var markers: [NMFMarker] = []
     var loadedMarkers: [NMFMarker] = []
@@ -71,7 +76,6 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, NMFMapView
     @IBOutlet weak var naverMapView: NMFNaverMapView!
     @IBOutlet weak var zoomControlView: NMFZoomControlView!
     @IBOutlet weak var saveLocationButton: UIButton!
-    @IBOutlet weak var searchBar: UISearchBar!
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -112,6 +116,10 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, NMFMapView
         // 업데이트된 위치 데이터를 UserDefaults에 저장
         UserDefaults.standard.set(savedLocations, forKey: "savedMarkerLocations")
         UserDefaults.standard.synchronize()
+        
+        // NotificationCenter를 사용하여 위치 저장 이벤트 방송
+            NotificationCenter.default.post(name: .didSaveLocation, object: nil)
+        
         print("Updated and saved marker locations: \(savedLocations)")
         
         loadMarkerLocations()
@@ -163,9 +171,12 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, NMFMapView
             loadedMarkers.append(marker)
         }
     }
+    
     func handleMarkerTap(marker: NMFMarker) {
-        reverseGeocodeCoordinate(marker.position)
+        let coordinate = CLLocationCoordinate2D(latitude: marker.position.lat, longitude: marker.position.lng)
+        reverseGeocodeCoordinate(coordinate)
     }
+
     
     func deleteMarker(marker: NMFMarker) {
         marker.mapView = nil
@@ -180,46 +191,40 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, NMFMapView
     }
     
     
-    func reverseGeocodeCoordinate(_ position: NMGLatLng) {
-        let url = URL(string: "https://naveropenapi.apigw.ntruss.com/map-reversegeocode/v2/gc?coords=\(position.lng),\(position.lat)&output=json&orders=addr")!
-        var request = URLRequest(url: url)
-        request.httpMethod = "GET"
-        request.addValue(Bundle.main.NAVER_MAP_API_KEY_ID, forHTTPHeaderField: "X-NCP-APIGW-API-KEY-ID")
-        request.addValue(Bundle.main.NAVER_MAP_API_KEY, forHTTPHeaderField: "X-NCP-APIGW-API-KEY")
-        
-        let task = URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
-            guard let data = data, error == nil else {
-                print("Error: \(error?.localizedDescription ?? "Unknown error")")
-                return
-            }
-            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-               let results = json["results"] as? [[String: Any]],
-               let region = results.first?["region"] as? [String: Any],
-               let area1 = region["area1"] as? [String: Any],
-               let area2 = region["area2"] as? [String: Any],
-               let area3 = region["area3"] as? [String: Any],
-               let land = results.first?["land"] as? [String: Any] {
-                
-                let area1Name = area1["name"] as? String ?? ""
-                let area2Name = area2["name"] as? String ?? ""
-                let area3Name = area3["name"] as? String ?? ""
-                let number1 = land["number1"] as? String ?? ""
-                let number2 = land["number2"] as? String ?? ""
-                
-                var fullAddress = "\(area1Name) \(area2Name) \(area3Name), \(number1)"
-                if !number2.isEmpty {
-                    fullAddress += "-\(number2)"
+    func reverseGeocodeCoordinate(_ position: CLLocationCoordinate2D) {
+        let location = CLLocation(latitude: position.latitude, longitude: position.longitude)
+        let geocoder = CLGeocoder()
+
+        geocoder.reverseGeocodeLocation(location) { [weak self] (placemarks, error) in
+            guard let strongSelf = self else { return }
+            if let placemarks = placemarks, let placemark = placemarks.first {
+                if let addrList = placemark.addressDictionary?["FormattedAddressLines"] as? [String] {
+                    var fullAddress = addrList.joined(separator: ", ")
+
+                    // "대한민국" 문자열을 제거합니다.
+                    if fullAddress.hasPrefix("대한민국") {
+                        fullAddress = String(fullAddress.dropFirst("대한민국".count)).trimmingCharacters(in: .whitespaces)
+                    }
+
+                    // 쉼표를 찾고 첫 번째 쉼표 이후의 문자를 제거합니다.
+                    if let commaIndex = fullAddress.firstIndex(of: ",") {
+                        fullAddress = String(fullAddress[..<commaIndex])
+                    }
+
+                    let nmfPosition = NMGLatLng(lat: position.latitude, lng: position.longitude)
+
+                    DispatchQueue.main.async {
+                        strongSelf.showInfoWindow(at: nmfPosition, with: fullAddress)
+                        print(fullAddress)
+                    }
                 }
-                DispatchQueue.main.async {
-                    self?.showInfoWindow(at: position, with: fullAddress)
-                    print(fullAddress)
-                }
-            } else {
-                print("주소 정보를 파싱할 수 없습니다.")
+            } else if let error = error {
+                print("Error: \(error.localizedDescription)")
             }
         }
-        task.resume()
     }
+    
+    
     
     
     func showInfoWindow(at position: NMGLatLng, with address: String) {
@@ -238,6 +243,7 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, NMFMapView
         // 새로운 InfoWindow 저장
         self.infoWindow = infoWindow
     }
+    
     
     
 }
