@@ -107,5 +107,5 @@ class ListViewController: UIViewController, UICollectionViewDataSource, UICollec
         return cell
     }
 
-
+    
 }

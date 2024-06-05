@@ -13,6 +13,7 @@
 		958218702C0E1F0D00BC4E5D /* ListViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9582186F2C0E1F0D00BC4E5D /* ListViewController.swift */; };
 		958218772C0E202300BC4E5D /* LocationCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 958218752C0E202300BC4E5D /* LocationCell.swift */; };
 		958218782C0E202300BC4E5D /* LocationCell.xib in Resources */ = {isa = PBXBuildFile; fileRef = 958218762C0E202300BC4E5D /* LocationCell.xib */; };
+		9582187C2C0EEB1E00BC4E5D /* MainTabBarController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9582187B2C0EEB1E00BC4E5D /* MainTabBarController.swift */; };
 		95D512172C0D9FBB00007338 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95D512162C0D9FBB00007338 /* AppDelegate.swift */; };
 		95D512192C0D9FBB00007338 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95D512182C0D9FBB00007338 /* SceneDelegate.swift */; };
 		95D5121B2C0D9FBB00007338 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95D5121A2C0D9FBB00007338 /* ViewController.swift */; };
@@ -29,6 +30,7 @@
 		9582186F2C0E1F0D00BC4E5D /* ListViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListViewController.swift; sourceTree = "<group>"; };
 		958218752C0E202300BC4E5D /* LocationCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationCell.swift; sourceTree = "<group>"; };
 		958218762C0E202300BC4E5D /* LocationCell.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = LocationCell.xib; sourceTree = "<group>"; };
+		9582187B2C0EEB1E00BC4E5D /* MainTabBarController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabBarController.swift; sourceTree = "<group>"; };
 		95D512132C0D9FBB00007338 /* PinIT.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PinIT.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		95D512162C0D9FBB00007338 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		95D512182C0D9FBB00007338 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
@@ -93,6 +95,7 @@
 				9582186F2C0E1F0D00BC4E5D /* ListViewController.swift */,
 				958218752C0E202300BC4E5D /* LocationCell.swift */,
 				958218762C0E202300BC4E5D /* LocationCell.xib */,
+				9582187B2C0EEB1E00BC4E5D /* MainTabBarController.swift */,
 			);
 			path = PinIT;
 			sourceTree = "<group>";
@@ -226,6 +229,7 @@
 				958218772C0E202300BC4E5D /* LocationCell.swift in Sources */,
 				95D5121B2C0D9FBB00007338 /* ViewController.swift in Sources */,
 				95D512172C0D9FBB00007338 /* AppDelegate.swift in Sources */,
+				9582187C2C0EEB1E00BC4E5D /* MainTabBarController.swift in Sources */,
 				95D512192C0D9FBB00007338 /* SceneDelegate.swift in Sources */,
 				958218702C0E1F0D00BC4E5D /* ListViewController.swift in Sources */,
 				95610E632C0DA77D002C3406 /* MapViewController.swift in Sources */,
