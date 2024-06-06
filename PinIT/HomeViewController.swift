@@ -9,12 +9,13 @@ import CoreLocation
 import Alamofire
 import SwiftyJSON
 
-class HomeViewController: UIViewController, CLLocationManagerDelegate, UICollectionViewDelegate, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout, UISearchBarDelegate {
+class HomeViewController: UIViewController, CLLocationManagerDelegate, UICollectionViewDelegate, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout, UISearchBarDelegate, UITableViewDelegate, UITableViewDataSource {
     var locationManager: CLLocationManager!
     var visitedLocations: [CLLocation] = []
-    var visitedAddresses: [(String, UIImage?)] = []
-    var filteredAddresses: [(String, UIImage?)] = []
+    var visitedAddresses: [(String, String, UIImage?)] = []
+    var filteredAddresses: [(String, String, UIImage?)] = []
     var recommendedPlaces: [(String, UIImage?)] = []
+    
     var visitedCollectionView: UICollectionView!
     var recommendedCollectionView: UICollectionView!
     var searchBar: UISearchBar!
@@ -22,11 +23,14 @@ class HomeViewController: UIViewController, CLLocationManagerDelegate, UICollect
     var recommendedPlacesLabel: UILabel!
     var scrollView: UIScrollView!
     var contentView: UIView!
+    var tableView: UITableView!
+    var tableViewHeightConstraint: NSLayoutConstraint!
     
     override func viewDidLoad() {
         super.viewDidLoad()
         setupScrollView()
         setupSearchBar()
+        setupTableView()
         setupRecentPlacesLabel()
         setupVisitedCollectionView()
         setupRecommendedPlacesLabel()
@@ -34,6 +38,7 @@ class HomeViewController: UIViewController, CLLocationManagerDelegate, UICollect
         setupLocationManager()
         loadVisitedPlaces()
         NotificationCenter.default.addObserver(self, selector: #selector(locationsDidUpdate), name: .didSaveLocation, object: nil)
+        contentView.bringSubviewToFront(tableView)
     }
     
     @objc func locationsDidUpdate(notification: Notification) {
@@ -42,32 +47,34 @@ class HomeViewController: UIViewController, CLLocationManagerDelegate, UICollect
     
     deinit {
         NotificationCenter.default.removeObserver(self)
+        tableView.removeObserver(self, forKeyPath: "contentSize")
     }
+
     
     func loadVisitedPlaces() {
         let savedLocations = UserDefaults.standard.array(forKey: "savedMarkerLocations") as? [[String: Any]] ?? []
-        
-        // createdAt 필드를 기준으로 최신순으로 정렬
-        let sortedLocations = savedLocations.sorted {
-            ($0["createdAt"] as? TimeInterval ?? 0) > ($1["createdAt"] as? TimeInterval ?? 0)
-        }
-        
-        visitedLocations = sortedLocations.map { dict in
+
+        // savedLocations를 역순으로 정렬
+        let reversedLocations = Array(savedLocations.reversed())
+
+        visitedLocations = reversedLocations.map { dict in
             CLLocation(latitude: dict["latitude"] as! Double, longitude: dict["longitude"] as! Double)
         }
-        visitedAddresses.removeAll()
+        visitedAddresses = Array(repeating: ("", "", nil), count: reversedLocations.count)  // 순서 보장을 위해 초기화
         
         for (index, location) in visitedLocations.enumerated() {
-            let buildingName = sortedLocations[index]["buildingName"] as? String ?? ""
-            let fullAddress = sortedLocations[index]["fullAddress"] as? String ?? ""
-            let address = buildingName.isEmpty ? fullAddress : buildingName
-            
+            let buildingName = reversedLocations[index]["buildingName"] as? String ?? ""
+            let fullAddress = reversedLocations[index]["fullAddress"] as? String ?? ""
+            let address = fullAddress  // 필요한 경우 address로 검색 가능하도록 fullAddress를 address로 사용
+
             fetchStreetViewImage(for: location) { [weak self] image in
                 guard let self = self else { return }
-                self.visitedAddresses.append((address, image))
-                self.filteredAddresses = self.visitedAddresses
+                self.visitedAddresses[index] = (address, buildingName, image)  // 인덱스를 사용하여 올바른 위치에 삽입
                 DispatchQueue.main.async {
+                    self.filteredAddresses = self.visitedAddresses
                     self.visitedCollectionView.reloadData()
+                    self.tableView.reloadData()
+                    print(buildingName)
                 }
             }
         }
@@ -106,7 +113,7 @@ class HomeViewController: UIViewController, CLLocationManagerDelegate, UICollect
     func setupSearchBar() {
         searchBar = UISearchBar()
         searchBar.delegate = self
-        searchBar.placeholder = "장소 검색"
+        searchBar.placeholder = "방문한 장소 검색"
         searchBar.translatesAutoresizingMaskIntoConstraints = false
         contentView.addSubview(searchBar)
         
@@ -129,6 +136,46 @@ class HomeViewController: UIViewController, CLLocationManagerDelegate, UICollect
             searchBar.trailingAnchor.constraint(equalTo: contentView.trailingAnchor)
         ])
     }
+    
+    func setupTableView() {
+        tableView = UITableView()
+        tableView.delegate = self
+        tableView.dataSource = self
+        tableView.backgroundColor = .white
+        tableView.translatesAutoresizingMaskIntoConstraints = false
+        contentView.addSubview(tableView)
+        
+        // 테이블 뷰 셀 등록
+        tableView.register(UITableViewCell.self, forCellReuseIdentifier: "AddressCell")
+        
+        // 테이블 뷰 제약 조건 설정
+        NSLayoutConstraint.activate([
+            tableView.topAnchor.constraint(equalTo: searchBar.bottomAnchor, constant: 10),
+            tableView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 20),
+            tableView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -20),
+            // tableView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor) // 기존 bottom 제약 조건 제거
+        ])
+        
+        // 테이블 뷰 높이 제약 조건 추가
+        tableViewHeightConstraint = tableView.heightAnchor.constraint(equalToConstant: 0)
+        tableViewHeightConstraint.isActive = true
+        
+        // 초기에는 테이블 뷰를 숨김
+        tableView.isHidden = true
+        
+        // 테이블 뷰 contentSize 관찰
+        tableView.addObserver(self, forKeyPath: "contentSize", options: .new, context: nil)
+    }
+    
+    override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
+        if keyPath == "contentSize" {
+            tableViewHeightConstraint.constant = tableView.contentSize.height
+        }
+    }
+
+
+
+
     
     func setupRecentPlacesLabel() {
         recentPlacesLabel = UILabel()
@@ -169,7 +216,7 @@ class HomeViewController: UIViewController, CLLocationManagerDelegate, UICollect
     
     func setupRecommendedPlacesLabel() {
         recommendedPlacesLabel = UILabel()
-        recommendedPlacesLabel.text = "추천 장소"
+        recommendedPlacesLabel.text = "이 장소는 어때요?"
         recommendedPlacesLabel.font = UIFont.boldSystemFont(ofSize: 18)
         recommendedPlacesLabel.translatesAutoresizingMaskIntoConstraints = false
         contentView.addSubview(recommendedPlacesLabel)
@@ -216,14 +263,17 @@ class HomeViewController: UIViewController, CLLocationManagerDelegate, UICollect
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "VisitedPlaceCell", for: indexPath) as! VisitedPlaceCell
         if collectionView == visitedCollectionView {
-            let address = filteredAddresses[indexPath.row]
-            cell.configure(with: address.0, image: address.1)
+            let addressTuple = filteredAddresses[indexPath.row]
+            let displayText = addressTuple.1.isEmpty ? addressTuple.0 : "\(addressTuple.1)\n\(addressTuple.0)"
+            cell.configure(with: displayText, image: addressTuple.2)
         } else {
             let place = recommendedPlaces[indexPath.row]
             cell.configure(with: place.0, image: place.1)
         }
+        cell.backgroundColor = .white
         return cell
     }
+
     
     func setupLocationManager() {
         locationManager = CLLocationManager()
@@ -288,6 +338,34 @@ class HomeViewController: UIViewController, CLLocationManagerDelegate, UICollect
         }
     }
     
+    func fetchNearbyPlace(for location: CLLocation, completion: @escaping (CLLocationCoordinate2D?) -> Void) {
+        let placesUrl = "https://maps.googleapis.com/maps/api/place/nearbysearch/json"
+        let placesParameters: [String: Any] = [
+            "location": "\(location.coordinate.latitude),\(location.coordinate.longitude)",
+            "radius": 500, // 검색 반경 (미터 단위)
+            "key": Bundle.main.GOOGLE_MAP_API_KEY
+        ]
+        
+        AF.request(placesUrl, parameters: placesParameters).responseJSON { response in
+            if let data = response.data {
+                let json = try? JSON(data: data)
+                if let results = json?["results"].array, !results.isEmpty {
+                    let firstResult = results[0]
+                    if let lat = firstResult["geometry"]["location"]["lat"].double,
+                       let lng = firstResult["geometry"]["location"]["lng"].double {
+                        completion(CLLocationCoordinate2D(latitude: lat, longitude: lng))
+                    } else {
+                        completion(nil)
+                    }
+                } else {
+                    completion(nil)
+                }
+            } else {
+                completion(nil)
+            }
+        }
+    }
+    
     func fetchStreetViewImage(for location: CLLocation, completion: @escaping (UIImage?) -> Void) {
         let metadataUrl = "https://maps.googleapis.com/maps/api/streetview/metadata"
         let metadataParameters: [String: Any] = [
@@ -341,7 +419,6 @@ class HomeViewController: UIViewController, CLLocationManagerDelegate, UICollect
             }
         }
     }
-
     
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         if manager.authorizationStatus == .authorizedAlways || manager.authorizationStatus == .authorizedWhenInUse {
@@ -353,7 +430,43 @@ class HomeViewController: UIViewController, CLLocationManagerDelegate, UICollect
         print("Failed to find user's location: \(error.localizedDescription)")
     }
     
+    // UISearchBarDelegate 메서드 추가
+    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
+        if searchText.isEmpty {
+            filteredAddresses = visitedAddresses
+            tableView.isHidden = true // 검색어가 없으면 테이블 뷰 숨김
+        } else {
+            filteredAddresses = visitedAddresses.filter { $0.0.contains(searchText) } // address로 검색
+            tableView.isHidden = false // 검색 결과가 있으면 테이블 뷰 표시
+        }
+        tableView.reloadData()
+    }
+
+    
+    // UITableViewDataSource 메서드
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        return filteredAddresses.count
+    }
+
+    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let cell = tableView.dequeueReusableCell(withIdentifier: "AddressCell", for: indexPath)
+        
+        // 인덱스 범위 확인
+        guard indexPath.row < filteredAddresses.count else {
+            return cell // 빈 셀 반환 또는 기본 셀 반환
+        }
+        
+        let (address, buildingName, _) = filteredAddresses[indexPath.row]
+        if buildingName.isEmpty {
+            cell.textLabel?.text = address
+        } else {
+            cell.textLabel?.text = "\(buildingName) - \(address)"
+        }
+        return cell
+    }
+
 }
+
 class VisitedPlaceCell: UICollectionViewCell {
     var addressLabel: UILabel!
     var containerView: UIView!
