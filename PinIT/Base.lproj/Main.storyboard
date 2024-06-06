@@ -140,9 +140,6 @@
                         </constraints>
                     </view>
                     <tabBarItem key="tabBarItem" title="플레이스" image="map-1" landscapeImage="map-1" id="dm9-py-uqg"/>
-                    <connections>
-                        <outlet property="collectionView" destination="92W-lU-VIj" id="gWb-qe-YaA"/>
-                    </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="lt5-UY-jt1" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
             </objects>

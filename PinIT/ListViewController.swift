@@ -6,119 +6,146 @@
 //
 
 import UIKit
-import NMapsMap
+import CoreLocation
 
-class ListViewController: UIViewController, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
-    
-    @IBOutlet weak var collectionView: UICollectionView!
-    var locations: [[String: Double]] = []
-    var addresses: [(String, NMGLatLng)] = []
-    let cellPadding: CGFloat = 8.0 // 패딩 값
-    
-    
+class ListViewController: UIViewController, UICollectionViewDelegate, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
+    var collectionView: UICollectionView!
+    var savedPlaces: [(location: CLLocation, address: String)] = []
+
     override func viewDidLoad() {
         super.viewDidLoad()
-        
-        NotificationCenter.default.addObserver(self, selector: #selector(updateLocationList), name: .didSaveLocation, object: nil)
-        
-        // UICollectionView 설정
-        collectionView.dataSource = self
-        collectionView.delegate = self
-        
-        // UICollectionViewCell 등록
-        let nib = UINib(nibName: "LocationCell", bundle: nil)
-        collectionView.register(nib, forCellWithReuseIdentifier: "LocationCell")
-        
-        // 저장된 위치 데이터 불러오기
-        locations = LocationManager.shared.loadLocations()
-        
-        // 위치 데이터를 주소로 변환
-        convertLocationsToAddresses(locations: locations)
-    }
-    
-    @objc func updateLocationList() {
-        // 새로 저장된 위치 데이터 불러오기
-        locations = LocationManager.shared.loadLocations()
-        
-        // 주소 목록 초기화 및 새로 변환
-        addresses.removeAll()
-        convertLocationsToAddresses(locations: locations)
-    
-    }
-    
+        setupCollectionView()
+        loadSavedPlaces()
 
-    func convertLocationsToAddresses(locations: [[String: Double]]) {
-        for location in locations {
-            let lat = location["latitude"] ?? 0.0
-            let lng = location["longitude"] ?? 0.0
-            let coordinate = NMGLatLng(lat: lat, lng: lng)
-            
-            // Reverse geocoding
-            reverseGeocodeCoordinate(coordinate) { [weak self] address in
-                guard let self = self else { return }
-                self.addresses.append((address, coordinate))
-                
-                // 모든 주소를 변환한 후 컬렉션 뷰 갱신
-                if self.addresses.count == locations.count {
-                    DispatchQueue.main.async {
-                        self.collectionView.reloadData()
+        NotificationCenter.default.addObserver(self, selector: #selector(loadSavedPlaces), name: .didSaveLocation, object: nil)
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+
+    @objc func loadSavedPlaces() {
+        if let savedLocations = UserDefaults.standard.array(forKey: "savedMarkerLocations") as? [[String: Double]] {
+            savedPlaces.removeAll()
+            for location in savedLocations {
+                let latitude = location["latitude"] ?? 0.0
+                let longitude = location["longitude"] ?? 0.0
+                let location = CLLocation(latitude: latitude, longitude: longitude)
+                savedPlaces.append((location: location, address: ""))
+            }
+            collectionView.reloadData()
+            fetchAddressesForSavedPlaces()
+        }
+    }
+
+    func fetchAddressesForSavedPlaces() {
+        for (index, place) in savedPlaces.enumerated() {
+            reverseGeocodeLocation(location: place.location) { address in
+                self.savedPlaces[index].address = address
+                DispatchQueue.main.async {
+                    self.collectionView.reloadItems(at: [IndexPath(item: index, section: 0)])
+                }
+            }
+        }
+    }
+
+    func reverseGeocodeLocation(location: CLLocation, completion: @escaping (String) -> Void) {
+        let geocoder = CLGeocoder()
+        geocoder.reverseGeocodeLocation(location) { (placemarks, error) in
+            if let placemarks = placemarks, let placemark = placemarks.first {
+                if let addrList = placemark.addressDictionary?["FormattedAddressLines"] as? [String] {
+                    var fullAddress = addrList.joined(separator: ", ")
+                    if fullAddress.hasPrefix("대한민국") {
+                        fullAddress = String(fullAddress.dropFirst("대한민국".count)).trimmingCharacters(in: .whitespaces)
                     }
+                    completion(fullAddress)
+                } else {
+                    completion("주소를 찾을 수 없습니다")
                 }
-            }
-        }
-    }
-    
-    func reverseGeocodeCoordinate(_ position: NMGLatLng, completion: @escaping (String) -> Void) {
-        let url = URL(string: "https://naveropenapi.apigw.ntruss.com/map-reversegeocode/v2/gc?coords=\(position.lng),\(position.lat)&output=json&orders=addr")!
-        var request = URLRequest(url: url)
-        request.httpMethod = "GET"
-        request.addValue(Bundle.main.NAVER_MAP_API_KEY_ID, forHTTPHeaderField: "X-NCP-APIGW-API-KEY-ID")
-        request.addValue(Bundle.main.NAVER_MAP_API_KEY, forHTTPHeaderField: "X-NCP-APIGW-API-KEY")
-        
-        let task = URLSession.shared.dataTask(with: request) { data, response, error in
-            guard let data = data, error == nil else {
-                print("Error: \(error?.localizedDescription ?? "Unknown error")")
-                return
-            }
-            
-            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-               let results = json["results"] as? [[String: Any]],
-               let region = results.first?["region"] as? [String: Any],
-               let area1 = region["area1"] as? [String: Any],
-               let area2 = region["area2"] as? [String: Any],
-               let area3 = region["area3"] as? [String: Any],
-               let land = results.first?["land"] as? [String: Any] {
-                
-                let area1Name = area1["name"] as? String ?? ""
-                let area2Name = area2["name"] as? String ?? ""
-                let area3Name = area3["name"] as? String ?? ""
-                let number1 = land["number1"] as? String ?? ""
-                let number2 = land["number2"] as? String ?? ""
-                
-                var fullAddress = "\(area1Name) \(area2Name) \(area3Name), \(number1)"
-                if !number2.isEmpty {
-                    fullAddress += "-\(number2)"
-                }
-                
-                completion(fullAddress)
             } else {
-                print("주소 정보를 파싱할 수 없습니다.")
+                completion("주소를 찾을 수 없습니다")
             }
         }
-        task.resume()
     }
-    
-    // UICollectionViewDataSource 메서드
+
+    func setupCollectionView() {
+        let layout = UICollectionViewFlowLayout()
+        layout.scrollDirection = .vertical
+        layout.minimumLineSpacing = 10
+        layout.minimumInteritemSpacing = 10
+
+        collectionView = UICollectionView(frame: .zero, collectionViewLayout: layout)
+        collectionView.delegate = self
+        collectionView.dataSource = self
+        collectionView.register(PlaceCollectionViewCell.self, forCellWithReuseIdentifier: "PlaceCell")
+        collectionView.translatesAutoresizingMaskIntoConstraints = false
+        collectionView.backgroundColor = .white
+
+        view.addSubview(collectionView)
+
+        NSLayoutConstraint.activate([
+            collectionView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            collectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            collectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            collectionView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+        ])
+    }
+
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        return addresses.count
-    }
+            return savedPlaces.count
+        }
 
-    func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
-        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "LocationCell", for: indexPath) as! LocationCell
-        let (address, coordinate) = addresses[indexPath.item]
-        cell.configure(address: address, coordinate: coordinate)
-        return cell
-    }
+        func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
+            let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "PlaceCell", for: indexPath) as! PlaceCollectionViewCell
+            let place = savedPlaces[indexPath.row]
+            cell.configure(with: place.location, address: place.address)
+            return cell
+        }
 
+        func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
+            let padding: CGFloat = 10
+            let collectionViewSize = collectionView.frame.size.width - padding
+
+            return CGSize(width: collectionViewSize / 2, height: 200)
+        }
     
+    func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
+            let place = savedPlaces[indexPath.row]
+            let detailVC = PlaceDetailViewController()
+            detailVC.place = place
+            detailVC.onSave = { [weak self] nickname, description, category, location in
+                self?.savePlaceDetail(nickname: nickname, description: description, category: category, location: location)
+            }
+            present(detailVC, animated: true, completion: nil)
+        }
+
+        func savePlaceDetail(nickname: String, description: String, category: String, location: CLLocation) {
+            var savedLocations = UserDefaults.standard.array(forKey: "savedMarkerLocations") as? [[String: Any]] ?? []
+
+            // 기존 장소를 찾아 업데이트하거나 새로운 장소를 추가
+            if let index = savedLocations.firstIndex(where: {
+                guard let lat = $0["latitude"] as? Double, let lng = $0["longitude"] as? Double else { return false }
+                return lat == location.coordinate.latitude && lng == location.coordinate.longitude
+            }) {
+                savedLocations[index]["nickname"] = nickname
+                savedLocations[index]["description"] = description
+                savedLocations[index]["category"] = category
+            } else {
+                let newPlace: [String: Any] = [
+                    "latitude": location.coordinate.latitude,
+                    "longitude": location.coordinate.longitude,
+                    "address": "",
+                    "nickname": nickname,
+                    "description": description,
+                    "category": category
+                ]
+                savedLocations.append(newPlace)
+            }
+
+            UserDefaults.standard.set(savedLocations, forKey: "savedMarkerLocations")
+            UserDefaults.standard.synchronize()
+
+            // 데이터 다시 로드
+            loadSavedPlaces()
+        }
 }
