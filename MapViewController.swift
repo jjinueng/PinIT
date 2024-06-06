@@ -14,35 +14,6 @@ import SwiftyJSON
 import Foundation
 
 
-extension Bundle {
-    
-    var NAVER_MAP_API_KEY: String {
-        guard let file = self.path(forResource: "API", ofType: "plist") else { return "" }
-        
-        // .plist를 딕셔너리로 받아오기
-        guard let resource = NSDictionary(contentsOfFile: file) else { return "" }
-        
-        // 딕셔너리에서 값 찾기
-        guard let key = resource["NAVER_MAP_API_KEY"] as? String else {
-            fatalError("NAVER_MAP_API_KEY error")
-        }
-        return key
-    }
-    
-    var NAVER_MAP_API_KEY_ID: String {
-        guard let file = self.path(forResource: "API", ofType: "plist") else { return "" }
-        
-        // .plist를 딕셔너리로 받아오기
-        guard let resource = NSDictionary(contentsOfFile: file) else { return "" }
-        
-        // 딕셔너리에서 값 찾기
-        guard let key = resource["NAVER_MAP_API_KEY_ID"] as? String else {
-            fatalError("NAVER_MAP_API_KEY_ID error")
-        }
-        return key
-    }
-}
-
 extension Notification.Name {
     static let didSaveLocation = Notification.Name("didSaveLocation")
 }
@@ -105,21 +76,23 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, NMFMapView
     
     @IBAction func saveMarkerLocations(_ sender: UIButton) {
         var savedLocations = UserDefaults.standard.array(forKey: "savedMarkerLocations") as? [[String: Any]] ?? []
-        
+        let createdAt = Date().timeIntervalSince1970
         let newLocations = markers.map { marker -> [String: Any] in
             if(marker.subCaptionText == ""){
                 return [
                     "latitude": marker.position.lat,
                     "longitude": marker.position.lng,
                     "buildingName": "",
-                    "fullAddress": marker.captionText
+                    "fullAddress": marker.captionText,
+                    "createdAt": createdAt
                 ]
             } else {
                 return [
                     "latitude": marker.position.lat,
                     "longitude": marker.position.lng,
                     "buildingName": marker.captionText,
-                    "fullAddress": marker.subCaptionText
+                    "fullAddress": marker.subCaptionText,
+                    "createdAt": createdAt
                 ]
             }
         }
@@ -240,7 +213,7 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, NMFMapView
                 var buildingName: String? = placemark.name
                 
                 // placemark.name에 subThoroughfare가 포함되어 있는지 확인
-                if let subThoroughfare = placemark.thoroughfare, let name = placemark.name, name.contains(subThoroughfare) {
+                if let thoroughfare = placemark.thoroughfare, let name = placemark.name, name.contains(thoroughfare) {
                     buildingName = nil
                 }
                 if let addrList = placemark.addressDictionary?["FormattedAddressLines"] as? [String] {

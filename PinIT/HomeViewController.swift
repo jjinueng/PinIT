@@ -4,16 +4,17 @@
 //
 //  Created by 김지윤 on 6/5/24.
 //
-
 import UIKit
 import CoreLocation
+import Alamofire
+import SwiftyJSON
 
 class HomeViewController: UIViewController, CLLocationManagerDelegate, UICollectionViewDelegate, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout, UISearchBarDelegate {
     var locationManager: CLLocationManager!
     var visitedLocations: [CLLocation] = []
-    var visitedAddresses: [String] = []
-    var filteredAddresses: [String] = []
-    var recommendedPlaces: [String] = []
+    var visitedAddresses: [(String, UIImage?)] = []
+    var filteredAddresses: [(String, UIImage?)] = []
+    var recommendedPlaces: [(String, UIImage?)] = []
     var visitedCollectionView: UICollectionView!
     var recommendedCollectionView: UICollectionView!
     var searchBar: UISearchBar!
@@ -44,11 +45,35 @@ class HomeViewController: UIViewController, CLLocationManagerDelegate, UICollect
     }
     
     func loadVisitedPlaces() {
-        let savedLocations = LocationManager.shared.loadLocations()
-        visitedLocations = savedLocations.map { CLLocation(latitude: $0["latitude"]!, longitude: $0["longitude"]!) }
-        visitedLocations.forEach { reverseGeocodeLocation(location: $0) }
+        let savedLocations = UserDefaults.standard.array(forKey: "savedMarkerLocations") as? [[String: Any]] ?? []
+        
+        // createdAt 필드를 기준으로 최신순으로 정렬
+        let sortedLocations = savedLocations.sorted {
+            ($0["createdAt"] as? TimeInterval ?? 0) > ($1["createdAt"] as? TimeInterval ?? 0)
+        }
+        
+        visitedLocations = sortedLocations.map { dict in
+            CLLocation(latitude: dict["latitude"] as! Double, longitude: dict["longitude"] as! Double)
+        }
+        visitedAddresses.removeAll()
+        
+        for (index, location) in visitedLocations.enumerated() {
+            let buildingName = sortedLocations[index]["buildingName"] as? String ?? ""
+            let fullAddress = sortedLocations[index]["fullAddress"] as? String ?? ""
+            let address = buildingName.isEmpty ? fullAddress : buildingName
+            
+            fetchStreetViewImage(for: location) { [weak self] image in
+                guard let self = self else { return }
+                self.visitedAddresses.append((address, image))
+                self.filteredAddresses = self.visitedAddresses
+                DispatchQueue.main.async {
+                    self.visitedCollectionView.reloadData()
+                }
+            }
+        }
     }
-    
+
+
     func saveLocation(location: CLLocation) {
         let locationData = ["latitude": location.coordinate.latitude, "longitude": location.coordinate.longitude]
         LocationManager.shared.saveLocations(locations: [locationData])
@@ -123,7 +148,7 @@ class HomeViewController: UIViewController, CLLocationManagerDelegate, UICollect
         let layout = UICollectionViewFlowLayout()
         layout.scrollDirection = .horizontal
         layout.minimumLineSpacing = 10
-        layout.itemSize = CGSize(width: 200, height: 150)
+        layout.itemSize = CGSize(width: 200, height: 200) // 이미지 높이에 맞게 크기 조정
         
         visitedCollectionView = UICollectionView(frame: .zero, collectionViewLayout: layout)
         visitedCollectionView.delegate = self
@@ -138,7 +163,7 @@ class HomeViewController: UIViewController, CLLocationManagerDelegate, UICollect
             visitedCollectionView.topAnchor.constraint(equalTo: recentPlacesLabel.bottomAnchor, constant: 10),
             visitedCollectionView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 20),
             visitedCollectionView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -20),
-            visitedCollectionView.heightAnchor.constraint(equalToConstant: 150)
+            visitedCollectionView.heightAnchor.constraint(equalToConstant: 200) // 이미지 높이에 맞게 크기 조정
         ])
     }
     
@@ -160,7 +185,7 @@ class HomeViewController: UIViewController, CLLocationManagerDelegate, UICollect
         let layout = UICollectionViewFlowLayout()
         layout.scrollDirection = .horizontal
         layout.minimumLineSpacing = 10
-        layout.itemSize = CGSize(width: 200, height: 150)
+        layout.itemSize = CGSize(width: 200, height: 200) // 이미지 높이에 맞게 크기 조정
         
         recommendedCollectionView = UICollectionView(frame: .zero, collectionViewLayout: layout)
         recommendedCollectionView.delegate = self
@@ -175,14 +200,14 @@ class HomeViewController: UIViewController, CLLocationManagerDelegate, UICollect
             recommendedCollectionView.topAnchor.constraint(equalTo: recommendedPlacesLabel.bottomAnchor, constant: 10),
             recommendedCollectionView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 20),
             recommendedCollectionView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -20),
-            recommendedCollectionView.heightAnchor.constraint(equalToConstant: 150),
+            recommendedCollectionView.heightAnchor.constraint(equalToConstant: 200), // 이미지 높이에 맞게 크기 조정
             recommendedCollectionView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -20)
         ])
     }
     
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
         if collectionView == visitedCollectionView {
-            return min(filteredAddresses.count, 5)
+            return min(filteredAddresses.count, 5) // 최대 5개만 표시
         } else {
             return recommendedPlaces.count
         }
@@ -192,10 +217,10 @@ class HomeViewController: UIViewController, CLLocationManagerDelegate, UICollect
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "VisitedPlaceCell", for: indexPath) as! VisitedPlaceCell
         if collectionView == visitedCollectionView {
             let address = filteredAddresses[indexPath.row]
-            cell.configure(with: address)
+            cell.configure(with: address.0, image: address.1)
         } else {
             let place = recommendedPlaces[indexPath.row]
-            cell.configure(with: place)
+            cell.configure(with: place.0, image: place.1)
         }
         return cell
     }
@@ -210,28 +235,36 @@ class HomeViewController: UIViewController, CLLocationManagerDelegate, UICollect
     
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         if let currentLocation = locations.first {
-            reverseGeocodeLocation(location: currentLocation)
-            visitedLocations.insert(currentLocation, at: 0) // 최근 위치를 맨 앞에 추가
             generateRecommendedPlaces(from: currentLocation)
         }
     }
     
-    func reverseGeocodeLocation(location: CLLocation) {
+    func reverseGeocodeLocation(location: CLLocation, completion: @escaping (String) -> Void) {
         let geocoder = CLGeocoder()
-        geocoder.reverseGeocodeLocation(location) { [weak self] (placemarks, error) in
-            guard let strongSelf = self else { return }
+        geocoder.reverseGeocodeLocation(location) { (placemarks, error) in
             if let placemarks = placemarks, let placemark = placemarks.first {
-                if let addrList = placemark.addressDictionary?["FormattedAddressLines"] as? [String] {
-                    var fullAddress = addrList.joined(separator: ", ")
-                    if fullAddress.hasPrefix("대한민국") {
-                        fullAddress = String(fullAddress.dropFirst("대한민국".count)).trimmingCharacters(in: .whitespaces)
-                    }
-                    strongSelf.visitedAddresses.insert(fullAddress, at: 0) // 최근 주소를 맨 앞에 추가
-                    strongSelf.filteredAddresses = strongSelf.visitedAddresses
-                    DispatchQueue.main.async {
-                        strongSelf.visitedCollectionView.reloadData()
+                var address: String = placemark.name!
+                if let subThoroughfare = placemark.thoroughfare, let name = placemark.name, name.contains(subThoroughfare) {
+                    if let addrList = placemark.addressDictionary?["FormattedAddressLines"] as? [String] {
+                        address  = addrList.joined(separator: ", ")
+                        
+                        // "대한민국" 문자열을 제거합니다.
+                        if address.hasPrefix("대한민국") {
+                            address = String(address.dropFirst("대한민국".count)).trimmingCharacters(in: .whitespaces)
+                        } else if let commaIndex = address.firstIndex(of: ",") {
+                            // "대한민국"으로 시작하지 않으면 첫 번째 콤마가 나올 때까지 삭제합니다.
+                            address = String(address[commaIndex...]).trimmingCharacters(in: .whitespaces)
+                            address = String(address.dropFirst(", 대한민국".count)).trimmingCharacters(in: .whitespaces)
+                        }
+                        // 쉼표를 찾고 첫 번째 쉼표 이후의 문자를 제거합니다.
+                        if let commaIndex = address.firstIndex(of: ",") {
+                            address = String(address[..<commaIndex])
+                        }
                     }
                 }
+                completion(address)
+            } else {
+                completion("No Address")
             }
         }
     }
@@ -243,31 +276,72 @@ class HomeViewController: UIViewController, CLLocationManagerDelegate, UICollect
             let randomLat = location.coordinate.latitude + Double(arc4random_uniform(100)) / 10000.0
             let randomLng = location.coordinate.longitude + Double(arc4random_uniform(100)) / 10000.0
             let newLocation = CLLocation(latitude: randomLat, longitude: randomLng)
-            reverseGeocodeRecommendedLocation(location: newLocation)
-        }
-    }
-    
-    
-    func reverseGeocodeRecommendedLocation(location: CLLocation) {
-        let geocoder = CLGeocoder()
-        geocoder.reverseGeocodeLocation(location) { [weak self] (placemarks, error) in
-            guard let strongSelf = self else { return }
-            if let placemarks = placemarks, let placemark = placemarks.first {
-                if let addrList = placemark.addressDictionary?["FormattedAddressLines"] as? [String] {
-                    var fullAddress = addrList.joined(separator: ", ")
-                    if fullAddress.hasPrefix("대한민국") {
-                        fullAddress = String(fullAddress.dropFirst("대한민국".count)).trimmingCharacters(in: .whitespaces)
-                    }
-                    let placeWithAddress = "\(fullAddress)"
-                    strongSelf.recommendedPlaces.append(placeWithAddress)
+            reverseGeocodeLocation(location: newLocation) { [weak self] address in
+                guard let self = self else { return }
+                self.fetchStreetViewImage(for: newLocation) { image in
+                    self.recommendedPlaces.append((address, image))
                     DispatchQueue.main.async {
-                        strongSelf.recommendedCollectionView.reloadData()
+                        self.recommendedCollectionView.reloadData()
                     }
                 }
             }
         }
     }
     
+    func fetchStreetViewImage(for location: CLLocation, completion: @escaping (UIImage?) -> Void) {
+        let metadataUrl = "https://maps.googleapis.com/maps/api/streetview/metadata"
+        let metadataParameters: [String: Any] = [
+            "location": "\(location.coordinate.latitude),\(location.coordinate.longitude)",
+            "key": Bundle.main.GOOGLE_MAP_API_KEY
+        ]
+        
+        AF.request(metadataUrl, parameters: metadataParameters).responseJSON { response in
+            if let data = response.data {
+                let json = try? JSON(data: data)
+                let status = json?["status"].string
+                if status == "OK" {
+                    // Street View 이미지 가져오기
+                    let imageUrl = "https://maps.googleapis.com/maps/api/streetview"
+                    let imageParameters: [String: Any] = [
+                        "location": "\(location.coordinate.latitude),\(location.coordinate.longitude)",
+                        "size": "600x400",
+                        "key": Bundle.main.GOOGLE_MAP_API_KEY
+                    ]
+                    
+                    AF.request(imageUrl, parameters: imageParameters).responseData { response in
+                        if let data = response.data, let image = UIImage(data: data) {
+                            completion(image)
+                        } else {
+                            completion(nil)
+                        }
+                    }
+                } else {
+                    // 가장 가까운 Street View 위치를 찾음
+                    if let panoId = json?["pano_id"].string {
+                        let nearestImageUrl = "https://maps.googleapis.com/maps/api/streetview"
+                        let nearestImageParameters: [String: Any] = [
+                            "pano": panoId,
+                            "size": "600x400",
+                            "key": Bundle.main.GOOGLE_MAP_API_KEY
+                        ]
+                        
+                        AF.request(nearestImageUrl, parameters: nearestImageParameters).responseData { response in
+                            if let data = response.data, let image = UIImage(data: data) {
+                                completion(image)
+                            } else {
+                                completion(nil)
+                            }
+                        }
+                    } else {
+                        completion(nil)
+                    }
+                }
+            } else {
+                completion(nil)
+            }
+        }
+    }
+
     
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         if manager.authorizationStatus == .authorizedAlways || manager.authorizationStatus == .authorizedWhenInUse {
@@ -279,16 +353,11 @@ class HomeViewController: UIViewController, CLLocationManagerDelegate, UICollect
         print("Failed to find user's location: \(error.localizedDescription)")
     }
     
-    // UISearchBarDelegate 메서드 추가
-    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
-        
-    }
-    
 }
-
 class VisitedPlaceCell: UICollectionViewCell {
     var addressLabel: UILabel!
     var containerView: UIView!
+    var imageView: UIImageView!
     
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -310,9 +379,16 @@ class VisitedPlaceCell: UICollectionViewCell {
         containerView.translatesAutoresizingMaskIntoConstraints = false
         contentView.addSubview(containerView)
         
+        imageView = UIImageView()
+        imageView.contentMode = .scaleAspectFill
+        imageView.clipsToBounds = true
+        imageView.layer.cornerRadius = 15
+        imageView.translatesAutoresizingMaskIntoConstraints = false
+        containerView.addSubview(imageView)
+        
         addressLabel = UILabel()
         addressLabel.translatesAutoresizingMaskIntoConstraints = false
-        addressLabel.numberOfLines = 0
+        addressLabel.numberOfLines = 0 // 여러 줄 표시 가능하도록 설정
         addressLabel.textAlignment = .center
         addressLabel.font = UIFont.systemFont(ofSize: 14, weight: .medium)
         containerView.addSubview(addressLabel)
@@ -323,14 +399,20 @@ class VisitedPlaceCell: UICollectionViewCell {
             containerView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -5),
             containerView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -5),
             
-            addressLabel.topAnchor.constraint(equalTo: containerView.topAnchor, constant: 10),
+            imageView.topAnchor.constraint(equalTo: containerView.topAnchor, constant: 5),
+            imageView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 5),
+            imageView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -5),
+            imageView.heightAnchor.constraint(equalToConstant: 120), // 이미지뷰 고정 높이
+            
+            addressLabel.topAnchor.constraint(equalTo: imageView.bottomAnchor, constant: 10), // 간격 조정
             addressLabel.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 10),
             addressLabel.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -10),
             addressLabel.bottomAnchor.constraint(equalTo: containerView.bottomAnchor, constant: -10)
         ])
     }
     
-    func configure(with address: String) {
+    func configure(with address: String, image: UIImage?) {
         addressLabel.text = address
+        imageView.image = image
     }
 }
