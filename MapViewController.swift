@@ -52,6 +52,7 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, NMFMapView
         super.viewDidLoad()
         setupLocationManager()
         setupMapViewSettings()
+        setupSaveLocationButton()
         loadMarkerLocations()
     }
     
@@ -262,6 +263,19 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, NMFMapView
     }
     
     
+    func setupSaveLocationButton() {
+        saveLocationButton.layer.cornerRadius = saveLocationButton.frame.size.height / 2
+        saveLocationButton.backgroundColor = UIColor(hex: "#CE3B3D")
+        saveLocationButton.setImage(UIImage(named: "element-plus")?.withRenderingMode(.alwaysTemplate), for: .normal)
+        saveLocationButton.tintColor = .white
+
+        
+        saveLocationButton.layer.shadowColor = UIColor.black.cgColor
+        saveLocationButton.layer.shadowOpacity = 0.3
+        saveLocationButton.layer.shadowOffset = CGSize(width: 0, height: 3)
+        saveLocationButton.layer.shadowRadius = 4
+    }
+
     
 }
 

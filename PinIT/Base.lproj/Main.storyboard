@@ -31,12 +31,12 @@
                                     <constraint firstItem="Tu8-Z1-nd2" firstAttribute="top" secondItem="gG3-M3-aC1" secondAttribute="top" id="vJO-e4-2sg"/>
                                 </constraints>
                             </view>
-                            <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="2rl-iQ-zyS">
-                                <rect key="frame" x="319" y="698.66666666666663" width="35" height="35"/>
+                            <button opaque="NO" contentMode="scaleToFill" misplaced="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="2rl-iQ-zyS">
+                                <rect key="frame" x="340.66666666666663" y="709" width="30" height="30"/>
                                 <color key="backgroundColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                 <color key="tintColor" systemColor="labelColor"/>
                                 <state key="normal" title="Button"/>
-                                <buttonConfiguration key="configuration" style="plain" title="+"/>
+                                <buttonConfiguration key="configuration" style="plain"/>
                                 <connections>
                                     <action selector="saveMarkerLocations:" destination="LUZ-hW-zLQ" eventType="touchUpInside" id="tE0-st-eMT"/>
                                 </connections>
