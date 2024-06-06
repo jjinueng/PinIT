@@ -104,21 +104,33 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, NMFMapView
     
     
     @IBAction func saveMarkerLocations(_ sender: UIButton) {
-        // UserDefaults에서 기존 위치 데이터 불러오기
-        var savedLocations = UserDefaults.standard.array(forKey: "savedMarkerLocations") as? [[String: Double]] ?? []
+        var savedLocations = UserDefaults.standard.array(forKey: "savedMarkerLocations") as? [[String: Any]] ?? []
         
-        // 현재 마커 배열에서 위치 데이터 추출
-        let newLocations = markers.map { ["latitude": $0.position.lat, "longitude": $0.position.lng] }
+        let newLocations = markers.map { marker -> [String: Any] in
+            if(marker.subCaptionText == ""){
+                return [
+                    "latitude": marker.position.lat,
+                    "longitude": marker.position.lng,
+                    "buildingName": "",
+                    "fullAddress": marker.captionText
+                ]
+            } else {
+                return [
+                    "latitude": marker.position.lat,
+                    "longitude": marker.position.lng,
+                    "buildingName": marker.captionText,
+                    "fullAddress": marker.subCaptionText
+                ]
+            }
+        }
         
-        // 기존 위치 데이터에 새 위치 데이터 추가
+        
         savedLocations.append(contentsOf: newLocations)
         
-        // 업데이트된 위치 데이터를 UserDefaults에 저장
         UserDefaults.standard.set(savedLocations, forKey: "savedMarkerLocations")
         UserDefaults.standard.synchronize()
         
-        // NotificationCenter를 사용하여 위치 저장 이벤트 방송
-            NotificationCenter.default.post(name: .didSaveLocation, object: nil)
+        NotificationCenter.default.post(name: .didSaveLocation, object: nil)
         
         print("Updated and saved marker locations: \(savedLocations)")
         
@@ -133,7 +145,16 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, NMFMapView
         marker.width = 20
         marker.height = 26
         marker.mapView = mapView
-        markers.append(marker)
+        reverseGeocodeCoordinate(marker.position) { [weak self] buildingName, address in
+            guard let self = self else { return }
+            if buildingName != nil {
+                marker.captionText = buildingName!
+                marker.subCaptionText = address!
+            } else {
+                marker.captionText = address!
+            }
+            self.markers.append(marker)
+        }
     }
     
     func removeMarkers() {
@@ -174,9 +195,11 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, NMFMapView
     
     func handleMarkerTap(marker: NMFMarker) {
         let coordinate = CLLocationCoordinate2D(latitude: marker.position.lat, longitude: marker.position.lng)
-        reverseGeocodeCoordinate(coordinate)
+        reverseGeocodeCoordinate(NMGLatLng(lat: coordinate.latitude, lng: coordinate.longitude)) { buildingName, address in
+            // 마커 클릭 시 추가 기능을 구현할 수 있습니다.
+        }
     }
-
+    
     
     func deleteMarker(marker: NMFMarker) {
         marker.mapView = nil
@@ -191,35 +214,40 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, NMFMapView
     }
     
     
-    func reverseGeocodeCoordinate(_ position: CLLocationCoordinate2D) {
-        let location = CLLocation(latitude: position.latitude, longitude: position.longitude)
+    func reverseGeocodeCoordinate(_ position: NMGLatLng, completion: @escaping (String?, String?) -> Void) {
+        let location = CLLocation(latitude: position.lat, longitude: position.lng)
         let geocoder = CLGeocoder()
-
-        geocoder.reverseGeocodeLocation(location) { [weak self] (placemarks, error) in
-            guard let strongSelf = self else { return }
+        
+        geocoder.reverseGeocodeLocation(location) { (placemarks, error) in
             if let placemarks = placemarks, let placemark = placemarks.first {
+                var buildingName: String? = placemark.name
+                
+                // placemark.name에 subThoroughfare가 포함되어 있는지 확인
+                if let subThoroughfare = placemark.subThoroughfare, let name = placemark.name, name.contains(subThoroughfare) {
+                    buildingName = nil
+                }
+                var fullAddress = placemark.thoroughfare ?? "No Address"
                 if let addrList = placemark.addressDictionary?["FormattedAddressLines"] as? [String] {
                     var fullAddress = addrList.joined(separator: ", ")
-
+                    
                     // "대한민국" 문자열을 제거합니다.
                     if fullAddress.hasPrefix("대한민국") {
                         fullAddress = String(fullAddress.dropFirst("대한민국".count)).trimmingCharacters(in: .whitespaces)
+                    } else if let commaIndex = fullAddress.firstIndex(of: ",") {
+                        // "대한민국"으로 시작하지 않으면 첫 번째 콤마가 나올 때까지 삭제합니다.
+                        fullAddress = String(fullAddress[commaIndex...]).trimmingCharacters(in: .whitespaces)
+                        fullAddress = String(fullAddress.dropFirst(", 대한민국".count)).trimmingCharacters(in: .whitespaces)
                     }
-
                     // 쉼표를 찾고 첫 번째 쉼표 이후의 문자를 제거합니다.
                     if let commaIndex = fullAddress.firstIndex(of: ",") {
                         fullAddress = String(fullAddress[..<commaIndex])
                     }
-
-                    let nmfPosition = NMGLatLng(lat: position.latitude, lng: position.longitude)
-
-                    DispatchQueue.main.async {
-                        strongSelf.showInfoWindow(at: nmfPosition, with: fullAddress)
-                        print(fullAddress)
-                    }
+                    completion(buildingName, fullAddress)
                 }
-            } else if let error = error {
-                print("Error: \(error.localizedDescription)")
+                
+                
+            } else {
+                completion(nil, nil)
             }
         }
     }

@@ -58,7 +58,7 @@ class PlaceDetailViewController: UIViewController {
         view.addSubview(categoryTextField)
 
         saveButton = UIButton(type: .system)
-        saveButton.setTitle("저장하기", for: .normal)
+        saveButton.setTitle("저장학", for: .normal)
         saveButton.addTarget(self, action: #selector(saveButtonTapped), for: .touchUpInside)
         saveButton.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(saveButton)

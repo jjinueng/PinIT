@@ -75,7 +75,21 @@ class PlaceCollectionViewCell: UICollectionViewCell {
 
     func configure(with location: CLLocation, address: String) {
         addressLabel.text = address
+        
         let cameraUpdate = NMFCameraUpdate(scrollTo: NMGLatLng(lat: location.coordinate.latitude, lng: location.coordinate.longitude))
-        mapView.moveCamera(cameraUpdate)
+        mapView?.moveCamera(cameraUpdate)
+        
+        // 마커 추가
+        let marker = NMFMarker(position: NMGLatLng(lat: location.coordinate.latitude, lng: location.coordinate.longitude))
+        marker.iconTintColor = UIColor.blue  // 원하는 색상으로 변경
+        marker.width = 24  // 원하는 너비로 변경
+        marker.height = 34
+        marker.mapView = mapView
+
+        // 제스처 비활성화
+        mapView?.isScrollGestureEnabled = false
+        mapView?.isZoomGestureEnabled = false
+        mapView?.isTiltGestureEnabled = false
+        mapView?.isRotateGestureEnabled = false
     }
 }
