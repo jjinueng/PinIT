@@ -74,7 +74,6 @@ class HomeViewController: UIViewController, CLLocationManagerDelegate, UICollect
                     self.filteredAddresses = self.visitedAddresses
                     self.visitedCollectionView.reloadData()
                     self.tableView.reloadData()
-                    print(buildingName)
                 }
             }
         }
@@ -485,10 +484,11 @@ class VisitedPlaceCell: UICollectionViewCell {
         containerView = UIView()
         containerView.backgroundColor = UIColor.systemGray6
         containerView.layer.cornerRadius = 15
-        containerView.layer.shadowColor = UIColor.black.cgColor
-        containerView.layer.shadowOpacity = 0.2
-        containerView.layer.shadowOffset = CGSize(width: 0, height: 3)
-        containerView.layer.shadowRadius = 4
+        contentView.layer.cornerRadius = 12
+        contentView.layer.shadowOpacity = 0.1
+        contentView.layer.shadowRadius = 3
+        contentView.layer.shadowOffset = CGSize(width: 0, height: 1)
+        contentView.layer.shadowColor = UIColor.black.cgColor
         containerView.translatesAutoresizingMaskIntoConstraints = false
         contentView.addSubview(containerView)
         

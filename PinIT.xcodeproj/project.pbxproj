@@ -10,9 +10,9 @@
 		6520E61476279CAA2DC00263 /* Pods_PinIT.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 85B864250794BEA467FA5A36 /* Pods_PinIT.framework */; };
 		9550F6C42C0FFC66008F0623 /* LocationTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9550F6C32C0FFC66008F0623 /* LocationTracker.swift */; };
 		9550F6C62C1003EE008F0623 /* HomeViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9550F6C52C1003EE008F0623 /* HomeViewController.swift */; };
-		9550F6C82C105A90008F0623 /* PlaceCollectionViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9550F6C72C105A90008F0623 /* PlaceCollectionViewCell.swift */; };
 		9550F6CE2C120078008F0623 /* BundleExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9550F6CD2C120078008F0623 /* BundleExtensions.swift */; };
 		9550F6D22C122661008F0623 /* UIColor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9550F6D12C122661008F0623 /* UIColor.swift */; };
+		9550F7062C124299008F0623 /* Model.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9550F7052C124299008F0623 /* Model.swift */; };
 		95610E632C0DA77D002C3406 /* MapViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95610E622C0DA77D002C3406 /* MapViewController.swift */; };
 		9582186A2C0E072C00BC4E5D /* API.plist in Resources */ = {isa = PBXBuildFile; fileRef = 958218692C0E072C00BC4E5D /* API.plist */; };
 		958218702C0E1F0D00BC4E5D /* ListViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9582186F2C0E1F0D00BC4E5D /* ListViewController.swift */; };
@@ -29,9 +29,9 @@
 		85B864250794BEA467FA5A36 /* Pods_PinIT.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_PinIT.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		9550F6C32C0FFC66008F0623 /* LocationTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationTracker.swift; sourceTree = "<group>"; };
 		9550F6C52C1003EE008F0623 /* HomeViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeViewController.swift; sourceTree = "<group>"; };
-		9550F6C72C105A90008F0623 /* PlaceCollectionViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaceCollectionViewCell.swift; sourceTree = "<group>"; };
 		9550F6CD2C120078008F0623 /* BundleExtensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BundleExtensions.swift; sourceTree = "<group>"; };
 		9550F6D12C122661008F0623 /* UIColor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UIColor.swift; sourceTree = "<group>"; };
+		9550F7052C124299008F0623 /* Model.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Model.swift; sourceTree = "<group>"; };
 		95610E622C0DA77D002C3406 /* MapViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MapViewController.swift; path = ../MapViewController.swift; sourceTree = "<group>"; };
 		958218692C0E072C00BC4E5D /* API.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = API.plist; sourceTree = "<group>"; };
 		9582186F2C0E1F0D00BC4E5D /* ListViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListViewController.swift; sourceTree = "<group>"; };
@@ -108,8 +108,8 @@
 				9582187B2C0EEB1E00BC4E5D /* MainTabBarController.swift */,
 				9550F6C32C0FFC66008F0623 /* LocationTracker.swift */,
 				9550F6C52C1003EE008F0623 /* HomeViewController.swift */,
-				9550F6C72C105A90008F0623 /* PlaceCollectionViewCell.swift */,
 				9550F6CD2C120078008F0623 /* BundleExtensions.swift */,
+				9550F7052C124299008F0623 /* Model.swift */,
 			);
 			path = PinIT;
 			sourceTree = "<group>";
@@ -244,9 +244,9 @@
 				9550F6CE2C120078008F0623 /* BundleExtensions.swift in Sources */,
 				95D512192C0D9FBB00007338 /* SceneDelegate.swift in Sources */,
 				9550F6C62C1003EE008F0623 /* HomeViewController.swift in Sources */,
-				9550F6C82C105A90008F0623 /* PlaceCollectionViewCell.swift in Sources */,
 				9550F6D22C122661008F0623 /* UIColor.swift in Sources */,
 				9550F6C42C0FFC66008F0623 /* LocationTracker.swift in Sources */,
+				9550F7062C124299008F0623 /* Model.swift in Sources */,
 				958218702C0E1F0D00BC4E5D /* ListViewController.swift in Sources */,
 				95610E632C0DA77D002C3406 /* MapViewController.swift in Sources */,
 			);

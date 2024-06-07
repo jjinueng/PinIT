@@ -9,143 +9,148 @@ import UIKit
 import CoreLocation
 
 class ListViewController: UIViewController, UICollectionViewDelegate, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
+    
+    var locations: [Location] = []
     var collectionView: UICollectionView!
-    var savedPlaces: [(location: CLLocation, address: String)] = []
 
     override func viewDidLoad() {
         super.viewDidLoad()
         setupCollectionView()
-        loadSavedPlaces()
-
-        NotificationCenter.default.addObserver(self, selector: #selector(loadSavedPlaces), name: .didSaveLocation, object: nil)
+        loadVisitedPlaces()
+        NotificationCenter.default.addObserver(self, selector: #selector(locationsDidUpdate), name: .didSaveLocation, object: nil)
     }
-
+    
+    @objc func locationsDidUpdate(notification: Notification) {
+        loadVisitedPlaces()
+    }
+    
     deinit {
         NotificationCenter.default.removeObserver(self)
     }
 
-    @objc func loadSavedPlaces() {
-        if let savedLocations = UserDefaults.standard.array(forKey: "savedMarkerLocations") as? [[String: Double]] {
-            savedPlaces.removeAll()
-            for location in savedLocations {
-                let latitude = location["latitude"] ?? 0.0
-                let longitude = location["longitude"] ?? 0.0
-                let location = CLLocation(latitude: latitude, longitude: longitude)
-                savedPlaces.append((location: location, address: ""))
-            }
-            collectionView.reloadData()
-            fetchAddressesForSavedPlaces()
-        }
-    }
-
-    func fetchAddressesForSavedPlaces() {
-        for (index, place) in savedPlaces.enumerated() {
-            reverseGeocodeLocation(location: place.location) { address in
-                self.savedPlaces[index].address = address
-                DispatchQueue.main.async {
-                    self.collectionView.reloadItems(at: [IndexPath(item: index, section: 0)])
-                }
-            }
-        }
-    }
-
-    func reverseGeocodeLocation(location: CLLocation, completion: @escaping (String) -> Void) {
-        let geocoder = CLGeocoder()
-        geocoder.reverseGeocodeLocation(location) { (placemarks, error) in
-            if let placemarks = placemarks, let placemark = placemarks.first {
-                if let addrList = placemark.addressDictionary?["FormattedAddressLines"] as? [String] {
-                    var fullAddress = addrList.joined(separator: ", ")
-                    if fullAddress.hasPrefix("대한민국") {
-                        fullAddress = String(fullAddress.dropFirst("대한민국".count)).trimmingCharacters(in: .whitespaces)
-                    }
-                    completion(fullAddress)
-                } else {
-                    completion("주소를 찾을 수 없습니다")
-                }
-            } else {
-                completion("주소를 찾을 수 없습니다")
-            }
-        }
-    }
 
     func setupCollectionView() {
         let layout = UICollectionViewFlowLayout()
-        layout.scrollDirection = .vertical
-        layout.minimumLineSpacing = 10
+        layout.itemSize = CGSize(width: view.frame.size.width / 2 - 15, height: 200)
         layout.minimumInteritemSpacing = 10
-
-        collectionView = UICollectionView(frame: .zero, collectionViewLayout: layout)
+        layout.minimumLineSpacing = 10
+        layout.sectionInset = UIEdgeInsets(top: 10, left: 10, bottom: 10, right: 10)
+        
+        collectionView = UICollectionView(frame: self.view.bounds, collectionViewLayout: layout)
+        collectionView.register(LocationCell.self, forCellWithReuseIdentifier: "LocationCell")
         collectionView.delegate = self
         collectionView.dataSource = self
-        collectionView.register(PlaceCollectionViewCell.self, forCellWithReuseIdentifier: "PlaceCell")
-        collectionView.translatesAutoresizingMaskIntoConstraints = false
-        collectionView.backgroundColor = .white
-
+        collectionView.backgroundColor = .clear
         view.addSubview(collectionView)
-
-        NSLayoutConstraint.activate([
-            collectionView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
-            collectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            collectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            collectionView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
-        ])
     }
 
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-            return savedPlaces.count
+        return locations.count
+    }
+
+    func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
+        guard let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "LocationCell", for: indexPath) as? LocationCell else {
+            fatalError("Unable to dequeue LocationCell")
         }
+        let location = locations[indexPath.item]
+        cell.configure(with: location)
+        return cell
+    }
 
-        func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
-            let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "PlaceCell", for: indexPath) as! PlaceCollectionViewCell
-            let place = savedPlaces[indexPath.row]
-            cell.configure(with: place.location, address: place.address)
-            return cell
+    func loadVisitedPlaces() {
+        let savedLocations = UserDefaults.standard.array(forKey: "savedMarkerLocations") as? [[String: Any]] ?? []
+        let reversedLocations = Array(savedLocations.reversed())
+
+        locations = reversedLocations.map { dict in
+            Location(
+                latitude: dict["latitude"] as? Double ?? 0.0,
+                longitude: dict["longitude"] as? Double ?? 0.0,
+                buildingName: dict["buildingName"] as? String ?? "",
+                fullAddress: dict["fullAddress"] as? String ?? "",
+                createdAt: dict["createdAt"] as? Date ?? Date(),
+                streetViewImage: nil  // 이미지는 초기에 nil로 설정
+            )
         }
+        
+//        for (index, location) in locations.enumerated() {
+//            fetchStreetViewImage(for: CLLocation(latitude: location.latitude, longitude: location.longitude)) { [weak self] image in
+//                guard let self = self else { return }
+//                self.locations[index].streetRoleImage = image
+//                DispatchQueue.main.async {
+//                    self.collectionView.reloadItems(at: [IndexPath(item: index, section: 0)])
+//                }
+//            }
+//        }
+    }
+}
 
-        func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
-            let padding: CGFloat = 10
-            let collectionViewSize = collectionView.frame.size.width - padding
+class LocationCell: UICollectionViewCell {
+    var titleLabel: UILabel!
+    var subtitleLabel: UILabel!
+    var imageView: UIImageView!
 
-            return CGSize(width: collectionViewSize / 2, height: 200)
-        }
-    
-    func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
-            let place = savedPlaces[indexPath.row]
-            let detailVC = PlaceDetailViewController()
-            detailVC.place = place
-            detailVC.onSave = { [weak self] nickname, description, category, location in
-                self?.savePlaceDetail(nickname: nickname, description: description, category: category, location: location)
-            }
-            present(detailVC, animated: true, completion: nil)
-        }
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        setupViews()
+        applyStyling()
+    }
 
-        func savePlaceDetail(nickname: String, description: String, category: String, location: CLLocation) {
-            var savedLocations = UserDefaults.standard.array(forKey: "savedMarkerLocations") as? [[String: Any]] ?? []
+    required init?(coder aDecoder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
 
-            // 기존 장소를 찾아 업데이트하거나 새로운 장소를 추가
-            if let index = savedLocations.firstIndex(where: {
-                guard let lat = $0["latitude"] as? Double, let lng = $0["longitude"] as? Double else { return false }
-                return lat == location.coordinate.latitude && lng == location.coordinate.longitude
-            }) {
-                savedLocations[index]["nickname"] = nickname
-                savedLocations[index]["description"] = description
-                savedLocations[index]["category"] = category
-            } else {
-                let newPlace: [String: Any] = [
-                    "latitude": location.coordinate.latitude,
-                    "longitude": location.coordinate.longitude,
-                    "address": "",
-                    "nickname": nickname,
-                    "description": description,
-                    "category": category
-                ]
-                savedLocations.append(newPlace)
-            }
+    private func setupViews() {
+        titleLabel = UILabel()
+        subtitleLabel = UILabel()
+        imageView = UIImageView()
 
-            UserDefaults.standard.set(savedLocations, forKey: "savedMarkerLocations")
-            UserDefaults.standard.synchronize()
+        // Auto Layout 사용 설정
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+        subtitleLabel.translatesAutoresizingMaskIntoConstraints = false
+        imageView.translatesAutoresizingMaskIntoConstraints = false
 
-            // 데이터 다시 로드
-            loadSavedPlaces()
-        }
+        // contentView에 요소 추가
+        contentView.addSubview(titleLabel)
+        contentView.addSubview(subtitleLabel)
+        contentView.addSubview(imageView)
+
+        // 제약 조건 추가
+        NSLayoutConstraint.activate([
+            titleLabel.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 10),
+            titleLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 10),
+            titleLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -10),
+            
+            subtitleLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 5),
+            subtitleLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 10),
+            subtitleLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -10),
+
+            imageView.topAnchor.constraint(equalTo: subtitleLabel.bottomAnchor, constant: 5),
+            imageView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 10),
+            imageView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -10),
+            imageView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -10)
+        ])
+    }
+
+    private func applyStyling() {
+        contentView.backgroundColor = .white
+        contentView.layer.cornerRadius = 12
+        contentView.layer.shadowOpacity = 0.1
+        contentView.layer.shadowRadius = 3
+        contentView.layer.shadowOffset = CGSize(width: 0, height: 1)
+        contentView.layer.shadowColor = UIColor.black.cgColor
+
+        titleLabel.font = UIFont.boldSystemFont(ofSize: 16)
+        subtitleLabel.font = UIFont.systemFont(ofSize: 14)
+        subtitleLabel.textColor = .darkGray
+        subtitleLabel.numberOfLines = 0
+
+        imageView.contentMode = .scaleAspectFill
+        imageView.clipsToBounds = true
+    }
+
+    func configure(with location: Location) {
+        titleLabel.text = location.buildingName
+        subtitleLabel.text = location.fullAddress
+        imageView.image = location.streetViewImage
+    }
 }
