@@ -15,4 +15,5 @@ struct Location {
     var fullAddress: String
     var createdAt: Date
     var streetViewImage: UIImage?
+    var isFavorite: Bool
 }

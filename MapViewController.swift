@@ -85,7 +85,8 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, NMFMapView
                     "longitude": marker.position.lng,
                     "buildingName": "",
                     "fullAddress": marker.captionText,
-                    "createdAt": createdAt
+                    "createdAt": createdAt,
+                    "isFavorite": false
                 ]
             } else {
                 return [
@@ -93,7 +94,8 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, NMFMapView
                     "longitude": marker.position.lng,
                     "buildingName": marker.captionText,
                     "fullAddress": marker.subCaptionText,
-                    "createdAt": createdAt
+                    "createdAt": createdAt,
+                    "isFavorite": false
                 ]
             }
         }
@@ -196,8 +198,8 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, NMFMapView
                 return [
                     "latitude": marker.position.lat,
                     "longitude": marker.position.lng,
-                    "buildingName": marker.captionText ?? "",
-                    "fullAddress": marker.subCaptionText ?? ""
+                    "buildingName": marker.captionText,
+                    "fullAddress": marker.subCaptionText
                 ]
             }
             UserDefaults.standard.set(updatedLocations, forKey: "savedMarkerLocations")
