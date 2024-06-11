@@ -14,6 +14,10 @@ struct Location {
     var buildingName: String
     var fullAddress: String
     var createdAt: Date
-    var streetViewImage: UIImage?
     var isFavorite: Bool
+    var nickname: String?
+    var memo: String?
+    var category: String?
+    var categoryColor: UIColor?
+    var images: [UIImage]
 }

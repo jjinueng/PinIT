@@ -73,23 +73,66 @@ class ListViewController: UIViewController, UICollectionViewDelegate, UICollecti
         return cell
     }
     
+    func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
+        let location = locations[indexPath.item]
+        showDetailPopup(for: location, at: indexPath)
+    }
+
+    func showDetailPopup(for location: Location, at indexPath: IndexPath) {
+        let detailVC = DetailPopupViewController()
+        detailVC.location = location
+        detailVC.indexPath = indexPath
+        detailVC.onSave = { [weak self] updatedLocation, indexPath in
+            guard let self = self else { return }
+            self.locations[indexPath.item] = updatedLocation
+            self.saveFavoriteLocations()  // 변경된 데이터 저장
+            self.collectionView.reloadItems(at: [indexPath])
+        }
+        present(detailVC, animated: true, completion: nil)
+    }
+
+    
+    func saveLocationDetails() {
+        let data = locations.map {
+            [
+                "latitude": $0.latitude,
+                "longitude": $0.longitude,
+                "isFavorite": $0.isFavorite,
+                "buildingName": $0.buildingName,
+                "fullAddress": $0.fullAddress,
+                "createdAt": $0.createdAt,
+                "nickname": $0.nickname,
+                "memo": $0.memo,
+                "category": $0.category
+            ] as [String : Any]
+        }
+        UserDefaults.standard.set(data, forKey: "savedMarkerLocations")
+    }
+
+    
     func loadVisitedPlaces() {
         let savedLocations = UserDefaults.standard.array(forKey: "savedMarkerLocations") as? [[String: Any]] ?? []
         let reversedLocations = Array(savedLocations.reversed())
         
         locations = reversedLocations.map { dict in
-            Location(
+            let imageDataArray = dict["images"] as? [Data] ?? []
+            let images = imageDataArray.compactMap { UIImage(data: $0) }
+            
+            return Location(
                 latitude: dict["latitude"] as? Double ?? 0.0,
                 longitude: dict["longitude"] as? Double ?? 0.0,
                 buildingName: dict["buildingName"] as? String ?? "",
                 fullAddress: dict["fullAddress"] as? String ?? "",
-                createdAt: dict["createdAt"] as? Date ?? Date(),
-                streetViewImage: nil,
-                isFavorite: false
+                createdAt: Date(timeIntervalSince1970: dict["createdAt"] as? TimeInterval ?? 0),
+                isFavorite: dict["isFavorite"] as? Bool ?? false,
+                nickname: dict["nickname"] as? String ?? "",
+                memo: dict["memo"] as? String ?? "",
+                category: dict["category"] as? String ?? "",
+                categoryColor: UIColor(hex: dict["categoryColor"] as? String ?? "#FFFFFF"),
+                images: images
             )
         }
-
-        loadFavoriteLocations()
+        loadFavoriteLocations() // Ensure favorite states are loaded
     }
 
 
@@ -101,17 +144,23 @@ class ListViewController: UIViewController, UICollectionViewDelegate, UICollecti
 
     func saveFavoriteLocations() {
         let favorites = locations.filter { $0.isFavorite }
-        let data = favorites.map {
-            [
-                "latitude": $0.latitude,
-                "longitude": $0.longitude,
-                "isFavorite": $0.isFavorite,
-                "buildingName": $0.buildingName,
-                "fullAddress": $0.fullAddress,
-                "createdAt": $0.createdAt
-            ] as [String : Any]
+        let data = favorites.map { location -> [String: Any] in
+            var dict: [String: Any] = [
+                "latitude": location.latitude,
+                "longitude": location.longitude,
+                "isFavorite": location.isFavorite,
+                "buildingName": location.buildingName,
+                "fullAddress": location.fullAddress,
+                "createdAt": location.createdAt.timeIntervalSince1970,
+                "nickname": location.nickname ?? "",
+                "memo": location.memo ?? "",
+                "category": location.category ?? "",
+                "categoryColor": location.categoryColor?.hexString ?? "#FFFFFF"
+            ]
+            let imageData = location.images.compactMap { $0.jpegData(compressionQuality: 1.0) }
+            dict["images"] = imageData
+            return dict
         }
-        print(data)
         UserDefaults.standard.set(data, forKey: "FavoriteLocations")
         UserDefaults.standard.synchronize()
     }
@@ -214,7 +263,6 @@ class LocationCell: UICollectionViewCell {
     func configure(with location: Location) {
         titleLabel.text = location.buildingName
         subtitleLabel.text = location.fullAddress
-        imageView.image = location.streetViewImage
         favoriteButton.setImage(UIImage(systemName: location.isFavorite ? "heart.fill" : "heart"), for: .normal)
         favoriteButton.tintColor = location.isFavorite ? .red : .white
         favoriteButton.addTarget(self, action: #selector(toggleFavorite), for: .touchUpInside)
@@ -225,3 +273,4 @@ class LocationCell: UICollectionViewCell {
     }
     
 }
+
