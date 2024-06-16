@@ -13,7 +13,6 @@ import Alamofire
 import SwiftyJSON
 import Foundation
 
-
 extension Notification.Name {
     static let didSaveLocation = Notification.Name("didSaveLocation")
 }
@@ -35,9 +34,7 @@ class LocationManager { // 헬퍼
     }
 }
 
-
 class MapViewController: UIViewController, CLLocationManagerDelegate, NMFMapViewTouchDelegate, UISearchBarDelegate {
-    
     
     let locationManager = CLLocationManager()
     var markers: [NMFMarker] = []
@@ -74,10 +71,8 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, NMFMapView
         naverMapView.mapView.touchDelegate = self
     }
     
-    
     @IBAction func saveMarkerLocations(_ sender: UIButton) {
         var savedLocations = UserDefaults.standard.array(forKey: "savedMarkerLocations") as? [[String: Any]] ?? []
-        let createdAt = Date().timeIntervalSince1970
         let newLocations = markers.map { marker -> [String: Any] in
             if(marker.subCaptionText == ""){
                 return [
@@ -85,8 +80,7 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, NMFMapView
                     "longitude": marker.position.lng,
                     "buildingName": "",
                     "fullAddress": marker.captionText,
-                    "createdAt": createdAt,
-                    "isFavorite": false
+                    "isFavorite": false,
                 ]
             } else {
                 return [
@@ -94,15 +88,11 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, NMFMapView
                     "longitude": marker.position.lng,
                     "buildingName": marker.captionText,
                     "fullAddress": marker.subCaptionText,
-                    "createdAt": createdAt,
-                    "isFavorite": false
+                    "isFavorite": false,
                 ]
             }
         }
-        
-        
         savedLocations.append(contentsOf: newLocations)
-        
         UserDefaults.standard.set(savedLocations, forKey: "savedMarkerLocations")
         UserDefaults.standard.synchronize()
         
@@ -114,98 +104,98 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, NMFMapView
     }
     
     func mapView(_ mapView: NMFMapView, didTapMap latlng: NMGLatLng, point: CGPoint) {
-            infoWindow?.close()
-            let marker = NMFMarker(position: latlng)
-            removeMarkers()
-            marker.iconTintColor = UIColor.red
-            marker.width = 20
-            marker.height = 26
-            marker.mapView = mapView
+        infoWindow?.close()
+        let marker = NMFMarker(position: latlng)
+        removeMarkers()
+        marker.iconTintColor = UIColor.red
+        marker.width = 20
+        marker.height = 26
+        marker.mapView = mapView
         marker.zIndex = 4
-            reverseGeocodeCoordinate(marker.position) { [weak self] buildingName, address in
-                guard let self = self else { return }
-                if let buildingName = buildingName {
-                    marker.captionText = buildingName
-                    marker.subCaptionText = address!
-                } else {
-                    marker.captionText = address!
-                }
-                self.markers.append(marker)
+        reverseGeocodeCoordinate(marker.position) { [weak self] buildingName, address in
+            guard let self = self else { return }
+            if let buildingName = buildingName {
+                marker.captionText = buildingName
+                marker.subCaptionText = address!
+            } else {
+                marker.captionText = address!
             }
+            self.markers.append(marker)
         }
-        
-        func removeMarkers() {
-            markers.forEach { $0.mapView = nil }
-            markers.removeAll()
-        }
-        
-        func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-            if let location = locations.last {
-                naverMapView.mapView.moveCamera(NMFCameraUpdate(scrollTo: NMGLatLng(lat: location.coordinate.latitude, lng: location.coordinate.longitude)))
-            }
-        }
-        
-        func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-            print("Failed to find user's location: \(error.localizedDescription)")
-        }
-        
-        func loadMarkerLocations() {
-            guard let savedLocations = UserDefaults.standard.array(forKey: "savedMarkerLocations") as? [[String: Any]] else { return }
-            for location in savedLocations {
-                let lat = location["latitude"] as? Double ?? 0.0
-                let lng = location["longitude"] as? Double ?? 0.0
-                let buildingName = location["buildingName"] as? String ?? ""
-                let fullAddress = location["fullAddress"] as? String ?? ""
-                let marker = NMFMarker(position: NMGLatLng(lat: lat, lng: lng))
-                
-                
-                // 마커 색상 및 크기 설정
-                marker.iconTintColor = UIColor.blue  // 원하는 색상으로 변경
-                marker.width = 24  // 원하는 너비로 변경
-                marker.height = 34  // 원하는 높이로 변경
-                
-                marker.captionText = buildingName.isEmpty ? fullAddress : buildingName
-                            marker.subCaptionText = buildingName.isEmpty ? "" : fullAddress
-                
-                marker.captionTextSize = 0
-                marker.subCaptionTextSize = 0
-                
-                marker.touchHandler = { [weak self] overlay -> Bool in
-                    self?.handleMarkerTap(marker: overlay as! NMFMarker)
-                    return true
-                }
-                marker.mapView = naverMapView.mapView
-                loadedMarkers.append(marker)
-            }
-        }
-        
-        func handleMarkerTap(marker: NMFMarker) {
-            let coordinate = CLLocationCoordinate2D(latitude: marker.position.lat, longitude: marker.position.lng)
-            let title = marker.captionText
-            reverseGeocodeCoordinate(NMGLatLng(lat: coordinate.latitude, lng: coordinate.longitude)) { buildingName, address in
-                self.showInfoWindow(at: marker.position, with: title)
-            }
-        }
-        
-        func deleteMarker(marker: NMFMarker) {
-            marker.mapView = nil
-            loadedMarkers.removeAll { $0 == marker }
-            updateStoredLocations()
-        }
-        
-        func updateStoredLocations() {
-            let updatedLocations = loadedMarkers.map { marker -> [String: Any] in
-                return [
-                    "latitude": marker.position.lat,
-                    "longitude": marker.position.lng,
-                    "buildingName": marker.captionText,
-                    "fullAddress": marker.subCaptionText
-                ]
-            }
-            UserDefaults.standard.set(updatedLocations, forKey: "savedMarkerLocations")
-            UserDefaults.standard.synchronize()
-        }
+    }
     
+    func removeMarkers() {
+        markers.forEach { $0.mapView = nil }
+        markers.removeAll()
+    }
+    
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        if let location = locations.last {
+            naverMapView.mapView.moveCamera(NMFCameraUpdate(scrollTo: NMGLatLng(lat: location.coordinate.latitude, lng: location.coordinate.longitude)))
+        }
+    }
+    
+    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        print("Failed to find user's location: \(error.localizedDescription)")
+    }
+    
+    func loadMarkerLocations() {
+        guard let savedLocations = UserDefaults.standard.array(forKey: "savedMarkerLocations") as? [[String: Any]] else { return }
+        for location in savedLocations {
+            let lat = location["latitude"] as? Double ?? 0.0
+            let lng = location["longitude"] as? Double ?? 0.0
+            let buildingName = location["buildingName"] as? String ?? ""
+            let fullAddress = location["fullAddress"] as? String ?? ""
+            let marker = NMFMarker(position: NMGLatLng(lat: lat, lng: lng))
+            let categoryColor = location["categoryColor"] as? String ?? "#00FF00"
+            
+            // 마커 색상 및 크기 설정
+            marker.iconImage = NMF_MARKER_IMAGE_BLACK
+            marker.iconTintColor = UIColor(hex: categoryColor)
+            marker.width = 24  // 원하는 너비로 변경
+            marker.height = 34  // 원하는 높이로 변경
+            
+            marker.captionText = buildingName.isEmpty ? fullAddress : buildingName
+            marker.subCaptionText = buildingName.isEmpty ? "" : fullAddress
+            
+            marker.captionTextSize = 0
+            marker.subCaptionTextSize = 0
+            
+            marker.touchHandler = { [weak self] overlay -> Bool in
+                self?.handleMarkerTap(marker: overlay as! NMFMarker)
+                return true
+            }
+            marker.mapView = naverMapView.mapView
+            loadedMarkers.append(marker)
+        }
+    }
+    
+    func handleMarkerTap(marker: NMFMarker) {
+        let coordinate = CLLocationCoordinate2D(latitude: marker.position.lat, longitude: marker.position.lng)
+        let title = marker.captionText
+        reverseGeocodeCoordinate(NMGLatLng(lat: coordinate.latitude, lng: coordinate.longitude)) { buildingName, address in
+            self.showInfoWindow(at: marker.position, with: title)
+        }
+    }
+    
+    func deleteMarker(marker: NMFMarker) {
+        marker.mapView = nil
+        loadedMarkers.removeAll { $0 == marker }
+        updateStoredLocations()
+    }
+    
+    func updateStoredLocations() {
+        let updatedLocations = loadedMarkers.map { marker -> [String: Any] in
+            return [
+                "latitude": marker.position.lat,
+                "longitude": marker.position.lng,
+                "buildingName": marker.captionText,
+                "fullAddress": marker.subCaptionText
+            ]
+        }
+        UserDefaults.standard.set(updatedLocations, forKey: "savedMarkerLocations")
+        UserDefaults.standard.synchronize()
+    }
     
     func reverseGeocodeCoordinate(_ position: NMGLatLng, completion: @escaping (String?, String?) -> Void) {
         let location = CLLocation(latitude: position.lat, longitude: position.lng)
@@ -236,16 +226,11 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, NMFMapView
                     }
                     completion(buildingName, fullAddress)
                 }
-                
-                
             } else {
                 completion(nil, nil)
             }
         }
     }
-    
-    
-    
     
     func showInfoWindow(at position: NMGLatLng, with address: String) {
         // 기존에 열려있는 InfoWindow 닫기
@@ -264,21 +249,17 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, NMFMapView
         self.infoWindow = infoWindow
     }
     
-    
     func setupSaveLocationButton() {
         saveLocationButton.layer.cornerRadius = saveLocationButton.frame.size.height / 2
         saveLocationButton.backgroundColor = UIColor(hex: "#CE3B3D")
         saveLocationButton.setImage(UIImage(named: "element-plus")?.withRenderingMode(.alwaysTemplate), for: .normal)
         saveLocationButton.tintColor = .white
-
         
         saveLocationButton.layer.shadowColor = UIColor.black.cgColor
         saveLocationButton.layer.shadowOpacity = 0.3
         saveLocationButton.layer.shadowOffset = CGSize(width: 0, height: 3)
         saveLocationButton.layer.shadowRadius = 4
     }
-
-    
 }
 
 class CustomInfoWindowDataSource: NSObject, NMFOverlayImageDataSource {
