@@ -4,12 +4,15 @@
 //
 //  Created by 김지윤 on 6/5/24.
 //
+
 import UIKit
 import CoreLocation
 import Alamofire
 import SwiftyJSON
 
 class HomeViewController: UIViewController, CLLocationManagerDelegate, UICollectionViewDelegate, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout, UISearchBarDelegate, UITableViewDelegate, UITableViewDataSource {
+    var location: Location?
+    
     var locationManager: CLLocationManager!
     var visitedLocations: [CLLocation] = []
     var visitedAddresses: [(String, String, UIImage?)] = []
@@ -25,6 +28,7 @@ class HomeViewController: UIViewController, CLLocationManagerDelegate, UICollect
     var contentView: UIView!
     var tableView: UITableView!
     var tableViewHeightConstraint: NSLayoutConstraint!
+    var searchResetTimer: Timer?
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -41,6 +45,11 @@ class HomeViewController: UIViewController, CLLocationManagerDelegate, UICollect
         contentView.bringSubviewToFront(tableView)
     }
     
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        searchResetTimer?.invalidate()
+    }
+    
     @objc func locationsDidUpdate(notification: Notification) {
         loadVisitedPlaces()
     }
@@ -50,7 +59,6 @@ class HomeViewController: UIViewController, CLLocationManagerDelegate, UICollect
         tableView.removeObserver(self, forKeyPath: "contentSize")
     }
 
-    
     func loadVisitedPlaces() {
         let savedLocations = UserDefaults.standard.array(forKey: "savedMarkerLocations") as? [[String: Any]] ?? []
 
@@ -78,7 +86,6 @@ class HomeViewController: UIViewController, CLLocationManagerDelegate, UICollect
             }
         }
     }
-
 
     func saveLocation(location: CLLocation) {
         let locationData = ["latitude": location.coordinate.latitude, "longitude": location.coordinate.longitude]
@@ -124,23 +131,28 @@ class HomeViewController: UIViewController, CLLocationManagerDelegate, UICollect
             searchTextField.borderStyle = .none
         }
         
-        // 검색 바 밑줄 제거
+        // 검색 바 자체 스타일링
+        searchBar.layer.cornerRadius = 15
+        searchBar.layer.masksToBounds = true
         searchBar.backgroundImage = UIImage()
         searchBar.searchTextPositionAdjustment = UIOffset(horizontal: 10, vertical: 0)
         
         // 검색 바 제약 조건 설정
         NSLayoutConstraint.activate([
-            searchBar.topAnchor.constraint(equalTo: contentView.topAnchor),
-            searchBar.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
-            searchBar.trailingAnchor.constraint(equalTo: contentView.trailingAnchor)
+            searchBar.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 10),
+            searchBar.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 10),
+            searchBar.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -10),
+            searchBar.heightAnchor.constraint(equalToConstant: 50)
         ])
     }
-    
+
     func setupTableView() {
         tableView = UITableView()
         tableView.delegate = self
         tableView.dataSource = self
         tableView.backgroundColor = .white
+        tableView.layer.cornerRadius = 15
+        tableView.layer.masksToBounds = true
         tableView.translatesAutoresizingMaskIntoConstraints = false
         contentView.addSubview(tableView)
         
@@ -150,9 +162,8 @@ class HomeViewController: UIViewController, CLLocationManagerDelegate, UICollect
         // 테이블 뷰 제약 조건 설정
         NSLayoutConstraint.activate([
             tableView.topAnchor.constraint(equalTo: searchBar.bottomAnchor, constant: 10),
-            tableView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 20),
-            tableView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -20),
-            // tableView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor) // 기존 bottom 제약 조건 제거
+            tableView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 10),
+            tableView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -10)
         ])
         
         // 테이블 뷰 높이 제약 조건 추가
@@ -164,18 +175,20 @@ class HomeViewController: UIViewController, CLLocationManagerDelegate, UICollect
         
         // 테이블 뷰 contentSize 관찰
         tableView.addObserver(self, forKeyPath: "contentSize", options: .new, context: nil)
+        
+        // 그림자 효과 추가
+        tableView.layer.shadowColor = UIColor.black.cgColor
+        tableView.layer.shadowOpacity = 0.2
+        tableView.layer.shadowOffset = CGSize(width: 0, height: 2)
+        tableView.layer.shadowRadius = 4
     }
-    
+
     override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
         if keyPath == "contentSize" {
             tableViewHeightConstraint.constant = tableView.contentSize.height
         }
     }
 
-
-
-
-    
     func setupRecentPlacesLabel() {
         recentPlacesLabel = UILabel()
         recentPlacesLabel.text = "최근 방문한 장소"
@@ -272,8 +285,15 @@ class HomeViewController: UIViewController, CLLocationManagerDelegate, UICollect
         cell.backgroundColor = .white
         return cell
     }
-
     
+    func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
+        if collectionView == visitedCollectionView {
+            let location = visitedLocations[indexPath.row]
+            let addressTuple = filteredAddresses[indexPath.row]
+            showDetailPopup(for: location, address: addressTuple.0, buildingName: addressTuple.1, image: addressTuple.2)
+        }
+    }
+
     func setupLocationManager() {
         locationManager = CLLocationManager()
         locationManager.delegate = self
@@ -284,83 +304,87 @@ class HomeViewController: UIViewController, CLLocationManagerDelegate, UICollect
     
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         if let currentLocation = locations.first {
-            generateRecommendedPlaces(from: currentLocation)
+            reverseGeocodeLocation(location: currentLocation) { [weak self] dongName in
+                guard let self = self, let dongName = dongName else { return }
+                self.searchPlaces(query: dongName)
+            }
         }
     }
     
-    func reverseGeocodeLocation(location: CLLocation, completion: @escaping (String) -> Void) {
+    func reverseGeocodeLocation(location: CLLocation, completion: @escaping (String?) -> Void) {
         let geocoder = CLGeocoder()
         geocoder.reverseGeocodeLocation(location) { (placemarks, error) in
             if let placemarks = placemarks, let placemark = placemarks.first {
-                var address: String = placemark.name!
-                if let subThoroughfare = placemark.thoroughfare, let name = placemark.name, name.contains(subThoroughfare) {
-                    if let addrList = placemark.addressDictionary?["FormattedAddressLines"] as? [String] {
-                        address  = addrList.joined(separator: ", ")
-                        
-                        // "대한민국" 문자열을 제거합니다.
-                        if address.hasPrefix("대한민국") {
-                            address = String(address.dropFirst("대한민국".count)).trimmingCharacters(in: .whitespaces)
-                        } else if let commaIndex = address.firstIndex(of: ",") {
-                            // "대한민국"으로 시작하지 않으면 첫 번째 콤마가 나올 때까지 삭제합니다.
-                            address = String(address[commaIndex...]).trimmingCharacters(in: .whitespaces)
-                            address = String(address.dropFirst(", 대한민국".count)).trimmingCharacters(in: .whitespaces)
-                        }
-                        // 쉼표를 찾고 첫 번째 쉼표 이후의 문자를 제거합니다.
-                        if let commaIndex = address.firstIndex(of: ",") {
-                            address = String(address[..<commaIndex])
-                        }
-                    }
-                }
-                completion(address)
-            } else {
-                completion("No Address")
-            }
-        }
-    }
-    
-    func generateRecommendedPlaces(from location: CLLocation) {
-        recommendedPlaces.removeAll()
-        
-        for _ in 1...5 {
-            let randomLat = location.coordinate.latitude + Double(arc4random_uniform(100)) / 10000.0
-            let randomLng = location.coordinate.longitude + Double(arc4random_uniform(100)) / 10000.0
-            let newLocation = CLLocation(latitude: randomLat, longitude: randomLng)
-            reverseGeocodeLocation(location: newLocation) { [weak self] address in
-                guard let self = self else { return }
-                self.fetchStreetViewImage(for: newLocation) { image in
-                    self.recommendedPlaces.append((address, image))
-                    DispatchQueue.main.async {
-                        self.recommendedCollectionView.reloadData()
-                    }
-                }
-            }
-        }
-    }
-    
-    func fetchNearbyPlace(for location: CLLocation, completion: @escaping (CLLocationCoordinate2D?) -> Void) {
-        let placesUrl = "https://maps.googleapis.com/maps/api/place/nearbysearch/json"
-        let placesParameters: [String: Any] = [
-            "location": "\(location.coordinate.latitude),\(location.coordinate.longitude)",
-            "radius": 500, // 검색 반경 (미터 단위)
-            "key": Bundle.main.GOOGLE_MAP_API_KEY
-        ]
-        
-        AF.request(placesUrl, parameters: placesParameters).responseJSON { response in
-            if let data = response.data {
-                let json = try? JSON(data: data)
-                if let results = json?["results"].array, !results.isEmpty {
-                    let firstResult = results[0]
-                    if let lat = firstResult["geometry"]["location"]["lat"].double,
-                       let lng = firstResult["geometry"]["location"]["lng"].double {
-                        completion(CLLocationCoordinate2D(latitude: lat, longitude: lng))
-                    } else {
-                        completion(nil)
-                    }
-                } else {
-                    completion(nil)
-                }
+                let dongName = placemark.subLocality
+                completion(dongName)
             } else {
                 completion(nil)
+            }
+        }
+    }
+    
+    func searchPlaces(query: String) {
+        let clientId = Bundle.main.NAVER_SEARCH_API_KEY_ID
+        let clientSecret = Bundle.main.NAVER_SEARCH_API_KEY
+        
+        // query에 "가볼만한곳" 추가
+        let fullQuery = "\(query) 가볼만한곳"
+        
+        let urlString = "https://openapi.naver.com/v1/search/local.json"
+        guard let url = URL(string: "\(urlString)?query=\(fullQuery.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")&display=5") else {
+            print("Invalid URL")
+            return
+        }
+        
+        let headers: HTTPHeaders = [
+            "X-Naver-Client-Id": clientId,
+            "X-Naver-Client-Secret": clientSecret
+        ]
+        
+        AF.request(url, headers: headers).responseJSON { response in
+            switch response.result {
+            case .success(let value):
+                let json = JSON(value)
+                print(json)
+                self.handleSearchResults(json)
+            case .failure(let error):
+                print(error)
+            }
+        }
+    }
+
+
+    func handleSearchResults(_ json: JSON) {
+        var places: [TrendingPlace] = []
+        for item in json["items"].arrayValue {
+            let title = item["title"].stringValue
+            let mapx = item["mapx"].doubleValue
+            let mapy = item["mapy"].doubleValue
+            let latitude = convertToLatitude(mapy: mapy)
+            let longitude = convertToLongitude(mapx: mapx)
+            let address = item["address"].stringValue
+            places.append(TrendingPlace(title: title, adress: address, latitude: latitude, longitude: longitude))
+        }
+        generateRecommendedPlaces(from: places)
+    }
+
+    func convertToLatitude(mapy: Double) -> Double {
+        return mapy / 10000000.0
+    }
+
+    func convertToLongitude(mapx: Double) -> Double {
+        return mapx / 10000000.0
+    }
+
+    func generateRecommendedPlaces(from places: [TrendingPlace]) {
+        recommendedPlaces = places.map { ($0.title, nil) }
+        for (index, place) in places.enumerated() {
+            let placeLocation = CLLocation(latitude: place.latitude, longitude: place.longitude)
+            fetchStreetViewImage(for: placeLocation) { image in
+                self.recommendedPlaces[index].1 = image
+                DispatchQueue.main.async {
+                    self.recommendedCollectionView.reloadData()
+                }
             }
         }
     }
@@ -439,8 +463,16 @@ class HomeViewController: UIViewController, CLLocationManagerDelegate, UICollect
             tableView.isHidden = false // 검색 결과가 있으면 테이블 뷰 표시
         }
         tableView.reloadData()
+        
+        searchResetTimer = Timer.scheduledTimer(timeInterval: 5.0, target: self, selector: #selector(resetSearchBar), userInfo: nil, repeats: false)
     }
-
+    
+    @objc func resetSearchBar() {
+        searchBar.text = ""
+        filteredAddresses = visitedAddresses
+        tableView.isHidden = true // 테이블 뷰 숨김
+        tableView.reloadData()
+    }
     
     // UITableViewDataSource 메서드
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
@@ -461,9 +493,37 @@ class HomeViewController: UIViewController, CLLocationManagerDelegate, UICollect
         } else {
             cell.textLabel?.text = "\(buildingName) - \(address)"
         }
+        
+        // 셀 스타일링
+        cell.backgroundColor = .white // 셀 배경은 흰색으로 유지
+        cell.textLabel?.textAlignment = .center
+        
         return cell
     }
+    
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        let addressTuple = filteredAddresses[indexPath.row]
+        let location = visitedLocations[indexPath.row]
+        showDetailPopup(for: location, address: addressTuple.0, buildingName: addressTuple.1, image: addressTuple.2)
+    }
 
+    func showDetailPopup(for location: CLLocation, address: String, buildingName: String, image: UIImage?) {
+        let detailVC = DetailPopupViewController()
+        detailVC.location = Location(
+            latitude: location.coordinate.latitude,
+            longitude: location.coordinate.longitude,
+            buildingName: buildingName,
+            fullAddress: address,
+            createdAt: Date(),
+            isFavorite: false,
+            nickname: "",
+            memo: "",
+            category: "",
+            categoryColor: .white,
+            images: image != nil ? [image!] : []
+        )
+        present(detailVC, animated: true, completion: nil)
+    }
 }
 
 class VisitedPlaceCell: UICollectionViewCell {
@@ -528,4 +588,11 @@ class VisitedPlaceCell: UICollectionViewCell {
         addressLabel.text = address
         imageView.image = image
     }
+}
+
+struct TrendingPlace {
+    let title: String
+    let adress: String
+    let latitude: Double
+    let longitude: Double
 }

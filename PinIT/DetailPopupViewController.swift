@@ -250,14 +250,15 @@ class DetailPopupViewController: UIViewController, UIPickerViewDelegate, PHPicke
                 updateImageCount()
                 imagesCollectionView.reloadData()
             }
-            if let category = savedLocation["category"] as? String, let categoryColor = savedLocation["categoryColor"] as? String {
+            if let category = savedLocation["category"] as? String, !category.isEmpty, let categoryColor = savedLocation["categoryColor"] as? String {
                 location.category = category
                 location.categoryColor = UIColor(hex: categoryColor)
                 categoryButton.setTitle(category, for: .normal)
-            }
-            if savedLocation["category"] == nil {
+            } else {
+                location.category = nil
                 categoryButton.setTitle("카테고리", for: .normal)
             }
+            
         }
     }
     
@@ -303,8 +304,41 @@ class DetailPopupViewController: UIViewController, UIPickerViewDelegate, PHPicke
             listVC.loadVisitedPlaces()
         }
         
+        // 모든 ViewController에 업데이트된 데이터를 알림
+        NotificationCenter.default.post(name: Notification.Name("didSaveLocation"), object: nil)
+        
         dismiss(animated: true, completion: nil)
     }
+    
+    @objc private func saveEdits() {
+        // 수정 완료 버튼을 눌렀을 때의 동작을 구현합니다.
+        textField.isUserInteractionEnabled = false
+        memoField.isEditable = false
+        addImageButton.isHidden = true  // 이미지 추가 버튼 숨김
+        categoryButton.isUserInteractionEnabled = false // 카테고리 버튼 비활성화
+        
+        // 각 셀의 삭제 버튼을 숨김
+        for case let cell as ImageCell in imagesCollectionView.visibleCells {
+            cell.deleteButton.isHidden = true
+        }
+        
+        if images.isEmpty {
+            imagesCollectionView.isHidden = true
+        }
+        
+        // 콜렉션 뷰 가시성 업데이트
+        updateImageCollectionViewVisibility()
+        
+        // 수정 완료 후, UserDefaults에 저장
+        saveButtonTapped()
+        
+        // 수정 완료 후, 다시 수정 버튼으로 변경
+        editButton.setTitle("수정", for: .normal)
+        editButton.setTitleColor(.systemBlue, for: .normal)
+        editButton.removeTarget(self, action: #selector(saveEdits), for: .touchUpInside)
+        editButton.addTarget(self, action: #selector(editButtonTapped), for: .touchUpInside)
+    }
+    
     
     @objc private func deleteButtonTapped() {
         // 삭제 버튼을 눌렀을 때의 동작을 구현합니다.
@@ -345,36 +379,6 @@ class DetailPopupViewController: UIViewController, UIPickerViewDelegate, PHPicke
         editButton.addTarget(self, action: #selector(saveEdits), for: .touchUpInside)
     }
     
-    @objc private func saveEdits() {
-        // 수정 완료 버튼을 눌렀을 때의 동작을 구현합니다.
-        textField.isUserInteractionEnabled = false
-        memoField.isEditable = false
-        addImageButton.isHidden = true  // 이미지 추가 버튼 숨김
-        categoryButton.isUserInteractionEnabled = false // 카테고리 버튼 비활성화
-        
-        // 각 셀의 삭제 버튼을 숨김
-        for case let cell as ImageCell in imagesCollectionView.visibleCells {
-            cell.deleteButton.isHidden = true
-        }
-        
-        if images.isEmpty {
-            imagesCollectionView.isHidden = true
-        }
-        
-        // 콜렉션 뷰 가시성 업데이트
-        updateImageCollectionViewVisibility()
-        
-        // 수정 완료 후, UserDefaults에 저장
-        saveButtonTapped()
-        
-        // 수정 완료 후, 다시 수정 버튼으로 변경
-        editButton.setTitle("수정", for: .normal)
-        editButton.setTitleColor(.systemBlue, for: .normal)
-        editButton.removeTarget(self, action: #selector(saveEdits), for: .touchUpInside)
-        editButton.addTarget(self, action: #selector(editButtonTapped), for: .touchUpInside)
-    }
-    
-    
     @objc private func categoryButtonTapped() {
         let categoryDataSource = ["음식점", "카페", "관광지", "숙소", "핫플"]
         let alert = UIAlertController(title: "카테고리 선택", message: nil, preferredStyle: .actionSheet)
@@ -396,13 +400,13 @@ class DetailPopupViewController: UIViewController, UIPickerViewDelegate, PHPicke
         
         present(alert, animated: true, completion: nil)
     }
-
+    
     private func deleteCategory() {
-        location?.category = ""
-        location?.categoryColor = .clear
+        location?.category = nil
+        location?.categoryColor = .green
         categoryButton.setTitle("카테고리", for: .normal)
     }
-
+    
     
     private func categorySelected(_ category: String) {
         var categoryColor: UIColor

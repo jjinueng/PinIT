@@ -57,7 +57,6 @@
                     <tabBarItem key="tabBarItem" title="지도" image="map" landscapeImage="map" id="MBi-SC-bh3"/>
                     <connections>
                         <outlet property="naverMapView" destination="gG3-M3-aC1" id="Uzn-OI-adE"/>
-                        <outlet property="saveLocationButton" destination="2rl-iQ-zyS" id="MWX-ax-3xb"/>
                         <outlet property="zoomControlView" destination="Tu8-Z1-nd2" id="naK-aN-t2F"/>
                     </connections>
                 </viewController>

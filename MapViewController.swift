@@ -22,15 +22,15 @@ class LocationManager { // 헬퍼
     
     private init() {}
     
-    func saveLocations(locations: [[String: Double]]) {
-        var savedLocations = UserDefaults.standard.array(forKey: "savedMarkerLocations") as? [[String: Double]] ?? []
+    func saveLocations(locations: [[String: Any]]) {
+        var savedLocations = UserDefaults.standard.array(forKey: "savedMarkerLocations") as? [[String: Any]] ?? []
         savedLocations.append(contentsOf: locations)
         UserDefaults.standard.set(savedLocations, forKey: "savedMarkerLocations")
         UserDefaults.standard.synchronize()
     }
     
-    func loadLocations() -> [[String: Double]] {
-        return UserDefaults.standard.array(forKey: "savedMarkerLocations") as? [[String: Double]] ?? []
+    func loadLocations() -> [[String: Any]] {
+        return UserDefaults.standard.array(forKey: "savedMarkerLocations") as? [[String: Any]] ?? []
     }
 }
 
@@ -49,8 +49,13 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, NMFMapView
         super.viewDidLoad()
         setupLocationManager()
         setupMapViewSettings()
-        setupSaveLocationButton()
         loadMarkerLocations()
+        
+        NotificationCenter.default.addObserver(self, selector: #selector(loadMarkerLocations), name: .didSaveLocation, object: nil)
+    }
+    
+    deinit {
+        NotificationCenter.default.removeObserver(self, name: .didSaveLocation, object: nil)
     }
     
     func setupLocationManager() {
@@ -63,44 +68,68 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, NMFMapView
     func setupMapViewSettings() {
         naverMapView.mapView.positionMode = .direction
         naverMapView.showCompass = true
-        naverMapView.showLocationButton = true
+        naverMapView.showLocationButton = false
         naverMapView.showZoomControls = false
         zoomControlView.mapView = naverMapView.mapView
         naverMapView.mapView.isTiltGestureEnabled = true
         naverMapView.mapView.isRotateGestureEnabled = true
         naverMapView.mapView.touchDelegate = self
+        
+        // 현재 위치 버튼 설정
+        let currentLocationButton = UIButton(type: .custom)
+        currentLocationButton.setImage(UIImage(systemName: "location.fill"), for: .normal)
+        currentLocationButton.backgroundColor = .white
+        currentLocationButton.layer.cornerRadius = 25
+        currentLocationButton.layer.shadowColor = UIColor.black.cgColor
+        currentLocationButton.layer.shadowOpacity = 0.3
+        currentLocationButton.layer.shadowOffset = CGSize(width: 0, height: 3)
+        currentLocationButton.layer.shadowRadius = 4
+        currentLocationButton.tintColor = UIColor(hex: "#CE3B3D")
+        currentLocationButton.addTarget(self, action: #selector(moveToCurrentLocation), for: .touchUpInside)
+        
+        view.addSubview(currentLocationButton)
+        
+        // 위치 추가 버튼 설정
+        let saveLocationButton = UIButton(type: .custom)
+        saveLocationButton.setImage(UIImage(systemName: "plus"), for: .normal)
+        saveLocationButton.backgroundColor = .white
+        saveLocationButton.layer.cornerRadius = 25
+        saveLocationButton.layer.shadowColor = UIColor.black.cgColor
+        saveLocationButton.layer.shadowOpacity = 0.3
+        saveLocationButton.layer.shadowOffset = CGSize(width: 0, height: 3)
+        saveLocationButton.layer.shadowRadius = 4
+        saveLocationButton.tintColor = UIColor(hex: "#CE3B3D")
+        saveLocationButton.addTarget(self, action: #selector(showSaveLocationOptions), for: .touchUpInside)
+        
+        view.addSubview(saveLocationButton)
+        
+        // 오토 레이아웃 제약 조건 설정
+        currentLocationButton.translatesAutoresizingMaskIntoConstraints = false
+        saveLocationButton.translatesAutoresizingMaskIntoConstraints = false
+        
+        NSLayoutConstraint.activate([
+            currentLocationButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20),
+            currentLocationButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
+            currentLocationButton.widthAnchor.constraint(equalToConstant: 50),
+            currentLocationButton.heightAnchor.constraint(equalToConstant: 50),
+            
+            saveLocationButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20),
+            saveLocationButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
+            saveLocationButton.widthAnchor.constraint(equalToConstant: 50),
+            saveLocationButton.heightAnchor.constraint(equalToConstant: 50)
+        ])
+    }
+
+
+    
+    @objc func moveToCurrentLocation() {
+        guard let currentLocation = locationManager.location else { return }
+        let coord = NMGLatLng(lat: currentLocation.coordinate.latitude, lng: currentLocation.coordinate.longitude)
+        naverMapView.mapView.moveCamera(NMFCameraUpdate(scrollTo: coord))
     }
     
     @IBAction func saveMarkerLocations(_ sender: UIButton) {
-        var savedLocations = UserDefaults.standard.array(forKey: "savedMarkerLocations") as? [[String: Any]] ?? []
-        let newLocations = markers.map { marker -> [String: Any] in
-            if(marker.subCaptionText == ""){
-                return [
-                    "latitude": marker.position.lat,
-                    "longitude": marker.position.lng,
-                    "buildingName": "",
-                    "fullAddress": marker.captionText,
-                    "isFavorite": false,
-                ]
-            } else {
-                return [
-                    "latitude": marker.position.lat,
-                    "longitude": marker.position.lng,
-                    "buildingName": marker.captionText,
-                    "fullAddress": marker.subCaptionText,
-                    "isFavorite": false,
-                ]
-            }
-        }
-        savedLocations.append(contentsOf: newLocations)
-        UserDefaults.standard.set(savedLocations, forKey: "savedMarkerLocations")
-        UserDefaults.standard.synchronize()
-        
-        NotificationCenter.default.post(name: .didSaveLocation, object: nil)
-        
-        print("Updated and saved marker locations: \(savedLocations)")
-        
-        loadMarkerLocations()
+        showSaveLocationOptions()
     }
     
     func mapView(_ mapView: NMFMapView, didTapMap latlng: NMGLatLng, point: CGPoint) {
@@ -139,7 +168,7 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, NMFMapView
         print("Failed to find user's location: \(error.localizedDescription)")
     }
     
-    func loadMarkerLocations() {
+    @objc func loadMarkerLocations() {
         guard let savedLocations = UserDefaults.standard.array(forKey: "savedMarkerLocations") as? [[String: Any]] else { return }
         for location in savedLocations {
             let lat = location["latitude"] as? Double ?? 0.0
@@ -249,16 +278,63 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, NMFMapView
         self.infoWindow = infoWindow
     }
     
-    func setupSaveLocationButton() {
-        saveLocationButton.layer.cornerRadius = saveLocationButton.frame.size.height / 2
-        saveLocationButton.backgroundColor = UIColor(hex: "#CE3B3D")
-        saveLocationButton.setImage(UIImage(named: "element-plus")?.withRenderingMode(.alwaysTemplate), for: .normal)
-        saveLocationButton.tintColor = .white
+    @objc func showSaveLocationOptions() {
+        let alertController = UIAlertController(title: "위치 저장", message: "저장할 위치를 선택하세요.", preferredStyle: .actionSheet)
         
-        saveLocationButton.layer.shadowColor = UIColor.black.cgColor
-        saveLocationButton.layer.shadowOpacity = 0.3
-        saveLocationButton.layer.shadowOffset = CGSize(width: 0, height: 3)
-        saveLocationButton.layer.shadowRadius = 4
+        let saveCurrentLocationAction = UIAlertAction(title: "현재 위치 저장", style: .default) { [weak self] _ in
+            self?.saveCurrentLocation()
+        }
+        
+        let saveSelectedLocationAction = UIAlertAction(title: "선택한 위치 저장", style: .default) { [weak self] _ in
+            self?.saveSelectedLocation()
+        }
+        
+        let cancelAction = UIAlertAction(title: "취소", style: .cancel, handler: nil)
+        
+        alertController.addAction(saveCurrentLocationAction)
+        alertController.addAction(saveSelectedLocationAction)
+        alertController.addAction(cancelAction)
+        
+        present(alertController, animated: true, completion: nil)
+    }
+    
+    func saveCurrentLocation() {
+        guard let currentLocation = locationManager.location else { return }
+        
+        let marker = NMFMarker(position: NMGLatLng(lat: currentLocation.coordinate.latitude, lng: currentLocation.coordinate.longitude))
+        reverseGeocodeCoordinate(NMGLatLng(lat: currentLocation.coordinate.latitude, lng: currentLocation.coordinate.longitude)) { [weak self] buildingName, address in
+            guard let self = self else { return }
+            let locationDict: [String: Any] = [
+                "latitude": currentLocation.coordinate.latitude,
+                "longitude": currentLocation.coordinate.longitude,
+                "buildingName": buildingName ?? "",
+                "fullAddress": address ?? "",
+                "isFavorite": false
+            ]
+            LocationManager.shared.saveLocations(locations: [locationDict])
+            NotificationCenter.default.post(name: .didSaveLocation, object: nil)
+        }
+    }
+    
+    func saveSelectedLocation() {
+        guard let selectedMarker = markers.first else {
+            let alert = UIAlertController(title: "알림", message: "저장할 위치를 선택해주세요.", preferredStyle: .alert)
+            let okAction = UIAlertAction(title: "확인", style: .default, handler: nil)
+            alert.addAction(okAction)
+            present(alert, animated: true, completion: nil)
+            return
+        }
+        
+        let locationDict: [String: Any] = [
+            "latitude": selectedMarker.position.lat,
+            "longitude": selectedMarker.position.lng,
+            "buildingName": selectedMarker.captionText,
+            "fullAddress": selectedMarker.subCaptionText,
+            "isFavorite": false
+        ]
+        
+        LocationManager.shared.saveLocations(locations: [locationDict])
+        NotificationCenter.default.post(name: .didSaveLocation, object: nil)
     }
 }
 

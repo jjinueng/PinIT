@@ -8,7 +8,7 @@
 import UIKit
 
 class ListViewController: UIViewController, UICollectionViewDelegate, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
-
+    
     var locations: [Location] = []
     var collectionView: UICollectionView!
     
@@ -33,12 +33,14 @@ class ListViewController: UIViewController, UICollectionViewDelegate, UICollecti
         let button = UIButton(type: .system)
         button.setTitle("편집", for: .normal)
         button.translatesAutoresizingMaskIntoConstraints = false
+        button.tintColor = UIColor(hex: "#CE3B3D")
         return button
     }()
     
     let deleteButton: UIButton = {
         let button = UIButton(type: .system)
         button.setTitle("삭제", for: .normal)
+        button.tintColor = UIColor(hex: "#CE3B3D")
         button.translatesAutoresizingMaskIntoConstraints = false
         button.isHidden = true
         return button
@@ -47,6 +49,7 @@ class ListViewController: UIViewController, UICollectionViewDelegate, UICollecti
     let favoriteButton: UIButton = {
         let button = UIButton(type: .system)
         button.setTitle("즐겨찾기", for: .normal)
+        button.tintColor = UIColor(hex: "#CE3B3D")
         button.translatesAutoresizingMaskIntoConstraints = false
         button.isHidden = true
         return button
@@ -55,6 +58,7 @@ class ListViewController: UIViewController, UICollectionViewDelegate, UICollecti
     let selectAllButton: UIButton = {
         let button = UIButton(type: .system)
         button.setTitle("전체 선택", for: .normal)
+        button.tintColor = UIColor(hex: "#CE3B3D")
         button.translatesAutoresizingMaskIntoConstraints = false
         button.isHidden = true
         return button
@@ -134,10 +138,10 @@ class ListViewController: UIViewController, UICollectionViewDelegate, UICollecti
             favoriteFilterButton.heightAnchor.constraint(equalToConstant: 40),
             
             filterStackView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            filterStackView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 10),
+            filterStackView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 15),
             
             editStackView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            editStackView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 10),
+            editStackView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 15),
             
             multiSelectButton.centerYAnchor.constraint(equalTo: favoriteFilterButton.centerYAnchor),
             multiSelectButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
@@ -146,11 +150,12 @@ class ListViewController: UIViewController, UICollectionViewDelegate, UICollecti
             menuButton.leadingAnchor.constraint(equalTo: multiSelectButton.trailingAnchor, constant: 20)
         ])
     }
-
+    
     
     func createDropDownButton(title: String, dataSource: [String], action: @escaping (String) -> Void) -> UIButton {
         let button = UIButton(type: .system)
         button.setTitle(title, for: .normal)
+        button.tintColor = UIColor(hex: "#CE3B3D")
         
         let actionClosure: (UIAction) -> Void = { uiAction in
             button.setTitle(uiAction.title, for: .normal)
@@ -172,7 +177,7 @@ class ListViewController: UIViewController, UICollectionViewDelegate, UICollecti
     @objc func toggleFavoriteFilter() {
         isFilteringFavorites.toggle()
         favoriteFilterButton.setImage(UIImage(systemName: isFilteringFavorites ? "heart.fill" : "heart"), for: .normal)
-        favoriteFilterButton.tintColor = isFilteringFavorites ? .red : .lightGray
+        favoriteFilterButton.tintColor = isFilteringFavorites ? UIColor(hex: "#CE3B3D") : .lightGray
         collectionView.reloadData()
     }
     
@@ -323,7 +328,7 @@ class ListViewController: UIViewController, UICollectionViewDelegate, UICollecti
         }
         UserDefaults.standard.set(data, forKey: "savedMarkerLocations")
     }
-
+    
     func saveFavoriteLocations() {
         let favorites = locations.filter { $0.isFavorite }
         let data = favorites.map { location -> [String: Any] in
@@ -346,7 +351,7 @@ class ListViewController: UIViewController, UICollectionViewDelegate, UICollecti
         UserDefaults.standard.set(data, forKey: "FavoriteLocations")
         UserDefaults.standard.synchronize()
     }
-
+    
     func loadVisitedPlaces() {
         let savedLocations = UserDefaults.standard.array(forKey: "savedMarkerLocations") as? [[String: Any]] ?? []
         let reversedLocations = Array(savedLocations.reversed())
@@ -372,8 +377,8 @@ class ListViewController: UIViewController, UICollectionViewDelegate, UICollecti
         loadFavoriteLocations() // Ensure favorite states are loaded
         collectionView.reloadData()
     }
-
-
+    
+    
     func toggleFavorite(at indexPath: IndexPath) {
         locations[indexPath.row].isFavorite.toggle()
         collectionView.reloadItems(at: [indexPath])
@@ -512,10 +517,8 @@ class LocationCell: UICollectionViewCell {
         } else {
             titleLabel.text = location.nickname
         }
-        print(location.nickname)
         subtitleLabel.text = location.fullAddress
-
-        // location의 images 배열에서 첫 번째 이미지를 가져오기
+        
         if let firstImage = location.images.first {
             imageView.image = firstImage
             noImageLabel.isHidden = true
