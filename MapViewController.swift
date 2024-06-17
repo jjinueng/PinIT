@@ -40,10 +40,13 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, NMFMapView
     var markers: [NMFMarker] = []
     var loadedMarkers: [NMFMarker] = []
     var infoWindow: NMFInfoWindow?
+    var selectedCategoryIndex = 0
     
     @IBOutlet weak var naverMapView: NMFNaverMapView!
     @IBOutlet weak var zoomControlView: NMFZoomControlView!
     @IBOutlet weak var saveLocationButton: UIButton!
+    
+    let categories = ["카테고리 전체", "음식점", "카페", "관광지", "숙소", "핫플", "카테고리 없음"]
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -52,6 +55,7 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, NMFMapView
         loadMarkerLocations()
         
         NotificationCenter.default.addObserver(self, selector: #selector(loadMarkerLocations), name: .didSaveLocation, object: nil)
+        setupCategoryFilterButton()
     }
     
     deinit {
@@ -119,9 +123,103 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, NMFMapView
             saveLocationButton.heightAnchor.constraint(equalToConstant: 50)
         ])
     }
-
-
     
+    func setupCategoryFilterButton() {
+        let categoryFilterButton = UIButton(type: .custom)
+        categoryFilterButton.setImage(UIImage(systemName: "line.horizontal.3.decrease.circle"), for: .normal)
+        categoryFilterButton.backgroundColor = .white
+        categoryFilterButton.layer.cornerRadius = 25
+        categoryFilterButton.layer.shadowColor = UIColor.black.cgColor
+        categoryFilterButton.layer.shadowOpacity = 0.3
+        categoryFilterButton.layer.shadowOffset = CGSize(width: 0, height: 3)
+        categoryFilterButton.layer.shadowRadius = 4
+        categoryFilterButton.tintColor = UIColor(hex: "#CE3B3D")
+        categoryFilterButton.addTarget(self, action: #selector(toggleCategory), for: .touchUpInside)
+        
+        view.addSubview(categoryFilterButton)
+        
+        // 오토 레이아웃 제약 조건 설정
+        categoryFilterButton.translatesAutoresizingMaskIntoConstraints = false
+        
+        NSLayoutConstraint.activate([
+            categoryFilterButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 20),
+            categoryFilterButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
+            categoryFilterButton.widthAnchor.constraint(equalToConstant: 50),
+            categoryFilterButton.heightAnchor.constraint(equalToConstant: 50)
+        ])
+    }
+    
+    @objc func toggleCategory() {
+        selectedCategoryIndex = (selectedCategoryIndex + 1) % categories.count
+        filterMarkersByCategory()
+        showSnackbar(message: "카테고리 : \(categories[selectedCategoryIndex])")
+    }
+    
+    func filterMarkersByCategory() {
+        let selectedCategory = categories[selectedCategoryIndex]
+        for marker in loadedMarkers {
+            if selectedCategory == "카테고리 전체" {
+                marker.mapView = naverMapView.mapView
+            } else if selectedCategory == "카테고리 없음" {
+                let category = marker.userInfo["category"] as? String
+                marker.mapView = (category == "") ? naverMapView.mapView : nil
+            } else {
+                let category = marker.userInfo["category"] as? String
+                marker.mapView = (category == selectedCategory) ? naverMapView.mapView : nil
+            }
+        }
+    }
+    
+    var currentSnackbar: UILabel?
+
+    func showSnackbar(message: String) {
+        // 기존 스낵바가 있으면 제거
+        if let currentSnackbar = currentSnackbar {
+            UIView.animate(withDuration: 0.3, animations: {
+                currentSnackbar.alpha = 0
+            }) { _ in
+                currentSnackbar.removeFromSuperview()
+            }
+        }
+
+        // 새로운 스낵바 생성
+        let snackbar = UILabel()
+        snackbar.text = message
+        snackbar.textAlignment = .center
+        snackbar.backgroundColor = UIColor.white.withAlphaComponent(0.7)
+        snackbar.textColor = UIColor.darkGray
+        snackbar.layer.cornerRadius = 15
+        snackbar.clipsToBounds = true
+        snackbar.font = UIFont.systemFont(ofSize: 14, weight: .medium)
+        view.addSubview(snackbar)
+        
+        snackbar.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            snackbar.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            snackbar.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -70),
+            snackbar.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.5),
+            snackbar.heightAnchor.constraint(equalToConstant: 40)
+        ])
+
+        snackbar.alpha = 0
+        UIView.animate(withDuration: 0.5, animations: {
+            snackbar.alpha = 1
+        }) { _ in
+            UIView.animate(withDuration: 0.5, delay: 2.0, options: .curveEaseOut, animations: {
+                snackbar.alpha = 0
+            }) { _ in
+                snackbar.removeFromSuperview()
+                // 스낵바가 사라지면 currentSnackbar 변수도 nil로 설정
+                if self.currentSnackbar == snackbar {
+                    self.currentSnackbar = nil
+                }
+            }
+        }
+
+        // currentSnackbar 변수에 새로 만든 스낵바 저장
+        currentSnackbar = snackbar
+    }
+
     @objc func moveToCurrentLocation() {
         guard let currentLocation = locationManager.location else { return }
         let coord = NMGLatLng(lat: currentLocation.coordinate.latitude, lng: currentLocation.coordinate.longitude)
@@ -170,17 +268,18 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, NMFMapView
     
     @objc func loadMarkerLocations() {
         guard let savedLocations = UserDefaults.standard.array(forKey: "savedMarkerLocations") as? [[String: Any]] else { return }
+        loadedMarkers.forEach { $0.mapView = nil }
+        loadedMarkers.removeAll()
         for location in savedLocations {
             let lat = location["latitude"] as? Double ?? 0.0
             let lng = location["longitude"] as? Double ?? 0.0
             let buildingName = location["buildingName"] as? String ?? ""
             let fullAddress = location["fullAddress"] as? String ?? ""
             let marker = NMFMarker(position: NMGLatLng(lat: lat, lng: lng))
-            let categoryColor = location["categoryColor"] as? String ?? "#00FF00"
             
             // 마커 색상 및 크기 설정
             marker.iconImage = NMF_MARKER_IMAGE_BLACK
-            marker.iconTintColor = UIColor(hex: categoryColor)
+            marker.iconTintColor = UIColor(hex: location["categoryColor"] as? String ?? "#00FF00")
             marker.width = 24  // 원하는 너비로 변경
             marker.height = 34  // 원하는 높이로 변경
             
@@ -190,6 +289,8 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, NMFMapView
             marker.captionTextSize = 0
             marker.subCaptionTextSize = 0
             
+            marker.userInfo = ["category": location["category"] as? String ?? ""]
+            
             marker.touchHandler = { [weak self] overlay -> Bool in
                 self?.handleMarkerTap(marker: overlay as! NMFMarker)
                 return true
@@ -197,6 +298,7 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, NMFMapView
             marker.mapView = naverMapView.mapView
             loadedMarkers.append(marker)
         }
+        filterMarkersByCategory()
     }
     
     func handleMarkerTap(marker: NMFMarker) {
@@ -219,7 +321,9 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, NMFMapView
                 "latitude": marker.position.lat,
                 "longitude": marker.position.lng,
                 "buildingName": marker.captionText,
-                "fullAddress": marker.subCaptionText
+                "fullAddress": marker.subCaptionText,
+                "categoryColor": marker.iconTintColor.hexString ?? "#00FF00",
+                "category": marker.userInfo["category"] as? String ?? ""
             ]
         }
         UserDefaults.standard.set(updatedLocations, forKey: "savedMarkerLocations")
@@ -309,7 +413,9 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, NMFMapView
                 "longitude": currentLocation.coordinate.longitude,
                 "buildingName": buildingName ?? "",
                 "fullAddress": address ?? "",
-                "isFavorite": false
+                "isFavorite": false,
+                "categoryColor": "#00FF00", // 기본 색상
+                "category": ""
             ]
             LocationManager.shared.saveLocations(locations: [locationDict])
             NotificationCenter.default.post(name: .didSaveLocation, object: nil)
@@ -330,7 +436,9 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, NMFMapView
             "longitude": selectedMarker.position.lng,
             "buildingName": selectedMarker.captionText,
             "fullAddress": selectedMarker.subCaptionText,
-            "isFavorite": false
+            "isFavorite": false,
+            "categoryColor": "#00FF00", // 기본 색상
+            "category": ""
         ]
         
         LocationManager.shared.saveLocations(locations: [locationDict])
@@ -342,6 +450,7 @@ class CustomInfoWindowDataSource: NSObject, NMFOverlayImageDataSource {
     var title: String
     
     init(title: String) {
+
         self.title = title
     }
     
