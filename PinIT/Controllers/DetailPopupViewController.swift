@@ -47,7 +47,6 @@ class DetailPopupViewController: UIViewController, UIPickerViewDelegate, PHPicke
     }
     
     private func setupViews() {
-        // ScrollView and ContentView setup
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         contentView.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(scrollView)
@@ -66,40 +65,35 @@ class DetailPopupViewController: UIViewController, UIPickerViewDelegate, PHPicke
             contentView.widthAnchor.constraint(equalTo: scrollView.widthAnchor)
         ])
         
-        // Delete Button
         deleteButton.setTitle("삭제", for: .normal)
         deleteButton.setTitleColor(.systemRed, for: .normal)
         deleteButton.addTarget(self, action: #selector(deleteButtonTapped), for: .touchUpInside)
         deleteButton.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(deleteButton)
         
-        // Edit Button
         editButton.setTitle("수정", for: .normal)
         editButton.setTitleColor(.systemBlue, for: .normal)
         editButton.addTarget(self, action: #selector(editButtonTapped), for: .touchUpInside)
         editButton.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(editButton)
-        
-        // Building Name Label
+
         buildingNameLabel.font = UIFont.boldSystemFont(ofSize: 16)
         buildingNameLabel.textAlignment = .left
-        
-        // Category Button
+
         categoryButton.setTitle("카테고리", for: .normal)
         categoryButton.titleLabel?.font = UIFont.boldSystemFont(ofSize: 16)
         categoryButton.setTitleColor(.black, for: .normal)
         categoryButton.titleLabel?.font = buildingNameLabel.font
         categoryButton.addTarget(self, action: #selector(categoryButtonTapped), for: .touchUpInside)
         categoryButton.translatesAutoresizingMaskIntoConstraints = false
-        categoryButton.isUserInteractionEnabled = false // 기본적으로 수정 불가 상태로 설정
+        categoryButton.isUserInteractionEnabled = false
         view.addSubview(categoryButton)
-        
-        // Address Label
+
         addressLabel.font = UIFont.systemFont(ofSize: 14)
         addressLabel.textAlignment = .left
         addressLabel.textColor = .gray
         
-        // Add Image Button
+
         addImageButton.setTitle("", for: .normal)
         addImageButton.setImage(UIImage(systemName: "photo.on.rectangle"), for: .normal)
         addImageButton.tintColor = .gray
@@ -110,7 +104,7 @@ class DetailPopupViewController: UIViewController, UIPickerViewDelegate, PHPicke
         addImageButton.contentHorizontalAlignment = .center
         addImageButton.titleLabel?.textAlignment = .center
         addImageButton.translatesAutoresizingMaskIntoConstraints = false
-        addImageButton.isHidden = true  // 기본적으로 숨김
+        addImageButton.isHidden = true
         
         addImageCountLabel.text = "0/10"
         addImageCountLabel.textAlignment = .center
@@ -118,36 +112,31 @@ class DetailPopupViewController: UIViewController, UIPickerViewDelegate, PHPicke
         addImageCountLabel.translatesAutoresizingMaskIntoConstraints = false
         addImageCountLabel.textColor = UIColor.gray
         addImageButton.addSubview(addImageCountLabel)
-        
-        // Nickname Label
+
         let nicknameLabel = UILabel()
         nicknameLabel.text = "별명"
         nicknameLabel.font = UIFont.systemFont(ofSize: 16)
         nicknameLabel.textAlignment = .left
-        
-        // Memo Label
+
         let memoLabel = UILabel()
         memoLabel.text = "메모"
         memoLabel.font = UIFont.systemFont(ofSize: 16)
         memoLabel.textAlignment = .left
-        
-        // TextField
+
         textField.borderStyle = .roundedRect
         textField.layer.borderWidth = 1
         textField.layer.borderColor = UIColor.lightGray.cgColor
         textField.layer.cornerRadius = 10
         textField.setPadding(left: 10, right: 10)
-        textField.isUserInteractionEnabled = false  // 기본적으로 입력 불가 상태로 설정
-        
-        // MemoField
+        textField.isUserInteractionEnabled = false
+
         memoField.layer.borderWidth = 1
         memoField.layer.borderColor = UIColor.lightGray.cgColor
         memoField.layer.cornerRadius = 10
         memoField.textContainerInset = UIEdgeInsets(top: 10, left: 10, bottom: 10, right: 10)
         memoField.font = UIFont.systemFont(ofSize: 16)
-        memoField.isEditable = false  // 기본적으로 입력 불가 상태로 설정
-        
-        // Images Collection View
+        memoField.isEditable = false
+
         imagesCollectionView.delegate = self
         imagesCollectionView.dataSource = self
         imagesCollectionView.register(ImageCell.self, forCellWithReuseIdentifier: "ImageCell")
@@ -155,8 +144,7 @@ class DetailPopupViewController: UIViewController, UIPickerViewDelegate, PHPicke
             flowLayout.scrollDirection = .horizontal
         }
         imagesCollectionView.backgroundColor = .clear
-        
-        // Stack Views
+
         let imageStackView = UIStackView(arrangedSubviews: [addImageButton, imagesCollectionView])
         imageStackView.axis = .horizontal
         imageStackView.spacing = 10
@@ -196,7 +184,7 @@ class DetailPopupViewController: UIViewController, UIPickerViewDelegate, PHPicke
             stackView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -20),
             
             addImageButton.heightAnchor.constraint(equalToConstant: 100),
-            addImageButton.widthAnchor.constraint(equalTo: addImageButton.heightAnchor), // Ensure addImageButton is square
+            addImageButton.widthAnchor.constraint(equalTo: addImageButton.heightAnchor),
             addImageCountLabel.centerXAnchor.constraint(equalTo: addImageButton.centerXAnchor),
             addImageCountLabel.topAnchor.constraint(equalTo: addImageButton.imageView?.bottomAnchor ?? addImageButton.bottomAnchor, constant: 5),
             
@@ -208,7 +196,7 @@ class DetailPopupViewController: UIViewController, UIPickerViewDelegate, PHPicke
             
             memoField.heightAnchor.constraint(equalToConstant: 150),
             
-            categoryButton.widthAnchor.constraint(equalToConstant: 100), // 버튼의 너비를 설정
+            categoryButton.widthAnchor.constraint(equalToConstant: 100),
             categoryButton.heightAnchor.constraint(equalToConstant: 30),
             categoryButton.topAnchor.constraint(equalTo: buildingNameLabel.topAnchor),
         ])
@@ -268,7 +256,6 @@ class DetailPopupViewController: UIViewController, UIPickerViewDelegate, PHPicke
         location.memo = memoField.text ?? ""
         location.images = images
         
-        // 저장하기 전에 데이터를 출력해 확인
         print("Saving Location: \(location)")
         
         onSave?(location, indexPath)
@@ -290,7 +277,6 @@ class DetailPopupViewController: UIViewController, UIPickerViewDelegate, PHPicke
             "images": location.images.compactMap { $0.jpegData(compressionQuality: 1.0) }
         ]
         
-        // 기존 위치를 찾아서 업데이트 또는 새로 추가
         if let existingIndex = savedLocations.firstIndex(where: { ($0["latitude"] as? Double) == location.latitude && ($0["longitude"] as? Double) == location.longitude }) {
             savedLocations[existingIndex] = locationDict
         } else {
@@ -298,26 +284,22 @@ class DetailPopupViewController: UIViewController, UIPickerViewDelegate, PHPicke
         }
         
         defaults.set(savedLocations, forKey: "savedMarkerLocations")
-        
-        // UserDefaults에 저장 후 다시 불러오기
+
         if let listVC = presentingViewController as? ListViewController {
             listVC.loadVisitedPlaces()
         }
-        
-        // 모든 ViewController에 업데이트된 데이터를 알림
+
         NotificationCenter.default.post(name: Notification.Name("didSaveLocation"), object: nil)
         
         dismiss(animated: true, completion: nil)
     }
     
     @objc private func saveEdits() {
-        // 수정 완료 버튼을 눌렀을 때의 동작을 구현합니다.
         textField.isUserInteractionEnabled = false
         memoField.isEditable = false
-        addImageButton.isHidden = true  // 이미지 추가 버튼 숨김
-        categoryButton.isUserInteractionEnabled = false // 카테고리 버튼 비활성화
-        
-        // 각 셀의 삭제 버튼을 숨김
+        addImageButton.isHidden = true
+        categoryButton.isUserInteractionEnabled = false
+
         for case let cell as ImageCell in imagesCollectionView.visibleCells {
             cell.deleteButton.isHidden = true
         }
@@ -325,14 +307,10 @@ class DetailPopupViewController: UIViewController, UIPickerViewDelegate, PHPicke
         if images.isEmpty {
             imagesCollectionView.isHidden = true
         }
-        
-        // 콜렉션 뷰 가시성 업데이트
+
         updateImageCollectionViewVisibility()
-        
-        // 수정 완료 후, UserDefaults에 저장
         saveButtonTapped()
         
-        // 수정 완료 후, 다시 수정 버튼으로 변경
         editButton.setTitle("수정", for: .normal)
         editButton.setTitleColor(.systemBlue, for: .normal)
         editButton.removeTarget(self, action: #selector(saveEdits), for: .touchUpInside)
@@ -341,7 +319,6 @@ class DetailPopupViewController: UIViewController, UIPickerViewDelegate, PHPicke
     
     
     @objc private func deleteButtonTapped() {
-        // 삭제 버튼을 눌렀을 때의 동작을 구현합니다.
         let alert = UIAlertController(title: "삭제 확인", message: "이 위치를 삭제하시겠습니까?", preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "취소", style: .cancel, handler: nil))
         alert.addAction(UIAlertAction(title: "삭제", style: .destructive, handler: { [weak self] _ in
@@ -360,19 +337,16 @@ class DetailPopupViewController: UIViewController, UIPickerViewDelegate, PHPicke
     }
     
     @objc private func editButtonTapped() {
-        // 수정 버튼을 눌렀을 때의 동작을 구현합니다.
         textField.isUserInteractionEnabled = true
         memoField.isEditable = true
-        addImageButton.isHidden = false  // 이미지 추가 버튼 표시
+        addImageButton.isHidden = false
         imagesCollectionView.isHidden = false
-        categoryButton.isUserInteractionEnabled = true // 카테고리 버튼 활성화
+        categoryButton.isUserInteractionEnabled = true
         
-        // 각 셀의 삭제 버튼을 표시
         for case let cell as ImageCell in imagesCollectionView.visibleCells {
             cell.deleteButton.isHidden = false
         }
         
-        // 수정 모드로 전환 시, 수정 완료 버튼으로 변경
         editButton.setTitle("완료", for: .normal)
         editButton.setTitleColor(.systemBlue, for: .normal)
         editButton.removeTarget(self, action: #selector(editButtonTapped), for: .touchUpInside)
@@ -429,7 +403,6 @@ class DetailPopupViewController: UIViewController, UIPickerViewDelegate, PHPicke
         location?.category = category
         location?.categoryColor = categoryColor
         
-        // 카테고리 버튼 타이틀과 색상 업데이트
         categoryButton.setTitle(category, for: .normal)
     }
     
@@ -472,7 +445,7 @@ class DetailPopupViewController: UIViewController, UIPickerViewDelegate, PHPicke
     
     private func presentPhotoLibrary() {
         var configuration = PHPickerConfiguration()
-        configuration.selectionLimit = 10 - images.count // Allow selection up to 10 images
+        configuration.selectionLimit = 10 - images.count
         configuration.filter = .images
         let picker = PHPickerViewController(configuration: configuration)
         picker.delegate = self
@@ -514,7 +487,6 @@ class DetailPopupViewController: UIViewController, UIPickerViewDelegate, PHPicke
         imagesCollectionView.isHidden = !images.isEmpty ? false : !editButton.currentTitle!.elementsEqual("완료")
     }
     
-    // UICollectionViewDataSource methods
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
         return images.count
     }
@@ -529,7 +501,6 @@ class DetailPopupViewController: UIViewController, UIPickerViewDelegate, PHPicke
         return cell
     }
     
-    // UICollectionViewDragDelegate
     func collectionView(_ collectionView: UICollectionView, itemsForBeginning session: UIDragSession, at indexPath: IndexPath) -> [UIDragItem] {
         guard textField.isUserInteractionEnabled else { return [] }
         let item = self.images[indexPath.row]
@@ -539,13 +510,11 @@ class DetailPopupViewController: UIViewController, UIPickerViewDelegate, PHPicke
         return [dragItem]
     }
     
-    // UICollectionViewDropDelegate
     func collectionView(_ collectionView: UICollectionView, performDropWith coordinator: UICollectionViewDropCoordinator) {
         let destinationIndexPath: IndexPath
         if let indexPath = coordinator.destinationIndexPath {
             destinationIndexPath = indexPath
         } else {
-            // If there is no destination index path, drop at the end of the section
             let row = collectionView.numberOfItems(inSection: 0)
             destinationIndexPath = IndexPath(row: row - 1, section: 0)
         }
@@ -577,18 +546,16 @@ class DetailPopupViewController: UIViewController, UIPickerViewDelegate, PHPicke
         images.remove(at: sender.tag)
         updateImageCount()
         imagesCollectionView.reloadData()
-        updateImageCollectionViewVisibility() // 업데이트 후 가시성 체크
+        updateImageCollectionViewVisibility()
     }
-    
-    // UICollectionViewDelegateFlowLayout methods
+
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
-        return CGSize(width: 100, height: 100) // Same height as addImageButton
+        return CGSize(width: 100, height: 100)
     }
 }
 
 extension DetailPopupViewController: NMFMapViewTouchDelegate, NMFMapViewCameraDelegate {
     func mapView(_ mapView: NMFMapView, didTap map: NMGLatLng) {
-        // 지도 터치 이벤트를 비활성화합니다.
     }
     
     func mapViewCameraIdle(_ mapView: NMFMapView) {
@@ -639,7 +606,7 @@ class ImageCell: UICollectionViewCell {
         representativeLabel.textAlignment = .center
         representativeLabel.font = UIFont.boldSystemFont(ofSize: 12)
         representativeLabel.translatesAutoresizingMaskIntoConstraints = false
-        representativeLabel.isHidden = true  // 기본적으로 숨김
+        representativeLabel.isHidden = true
         contentView.addSubview(representativeLabel)
         
         NSLayoutConstraint.activate([
@@ -656,17 +623,5 @@ class ImageCell: UICollectionViewCell {
             representativeLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
             representativeLabel.heightAnchor.constraint(equalToConstant: 20)
         ])
-    }
-}
-
-extension UITextField {
-    func setPadding(left: CGFloat, right: CGFloat) {
-        let paddingViewLeft = UIView(frame: CGRect(x: 0, y: 0, width: left, height: self.frame.height))
-        self.leftView = paddingViewLeft
-        self.leftViewMode = .always
-        
-        let paddingViewRight = UIView(frame: CGRect(x: 0, y: 0, width: right, height: self.frame.height))
-        self.rightView = paddingViewRight
-        self.rightViewMode = .always
     }
 }

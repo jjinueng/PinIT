@@ -183,7 +183,7 @@ class ListViewController: UIViewController, UICollectionViewDelegate, UICollecti
     
     @objc func toggleMultiSelect() {
         isMultiSelecting.toggle()
-        selectedItems.removeAll()  // Clear selected items when toggling
+        selectedItems.removeAll()
         multiSelectButton.setTitle(isMultiSelecting ? "취소" : "편집", for: .normal)
         filterStackView.isHidden = isMultiSelecting
         editStackView.isHidden = !isMultiSelecting
@@ -302,7 +302,7 @@ class ListViewController: UIViewController, UICollectionViewDelegate, UICollecti
             } else {
                 self.locations.remove(at: indexPath.item)
             }
-            self.saveFavoriteLocations()  // 변경된 데이터 저장
+            self.saveFavoriteLocations()
             self.collectionView.reloadData()
         }
         present(detailVC, animated: true, completion: nil)
@@ -374,7 +374,7 @@ class ListViewController: UIViewController, UICollectionViewDelegate, UICollecti
                 images: images
             )
         }
-        loadFavoriteLocations() // Ensure favorite states are loaded
+        loadFavoriteLocations()
         collectionView.reloadData()
     }
     

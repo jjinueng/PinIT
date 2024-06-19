@@ -62,22 +62,21 @@ class HomeViewController: UIViewController, CLLocationManagerDelegate, UICollect
     func loadVisitedPlaces() {
         let savedLocations = UserDefaults.standard.array(forKey: "savedMarkerLocations") as? [[String: Any]] ?? []
 
-        // savedLocations를 역순으로 정렬
         let reversedLocations = Array(savedLocations.reversed())
 
         visitedLocations = reversedLocations.map { dict in
             CLLocation(latitude: dict["latitude"] as! Double, longitude: dict["longitude"] as! Double)
         }
-        visitedAddresses = Array(repeating: ("", "", nil), count: reversedLocations.count)  // 순서 보장을 위해 초기화
+        visitedAddresses = Array(repeating: ("", "", nil), count: reversedLocations.count)
         
         for (index, location) in visitedLocations.enumerated() {
             let buildingName = reversedLocations[index]["buildingName"] as? String ?? ""
             let fullAddress = reversedLocations[index]["fullAddress"] as? String ?? ""
-            let address = fullAddress  // 필요한 경우 address로 검색 가능하도록 fullAddress를 address로 사용
+            let address = fullAddress
 
             fetchStreetViewImage(for: location) { [weak self] image in
                 guard let self = self else { return }
-                self.visitedAddresses[index] = (address, buildingName, image)  // 인덱스를 사용하여 올바른 위치에 삽입
+                self.visitedAddresses[index] = (address, buildingName, image)
                 DispatchQueue.main.async {
                     self.filteredAddresses = self.visitedAddresses
                     self.visitedCollectionView.reloadData()
@@ -122,22 +121,19 @@ class HomeViewController: UIViewController, CLLocationManagerDelegate, UICollect
         searchBar.placeholder = "방문한 장소 검색"
         searchBar.translatesAutoresizingMaskIntoConstraints = false
         contentView.addSubview(searchBar)
-        
-        // 검색 바 스타일링
+
         if let searchTextField = searchBar.value(forKey: "searchField") as? UITextField {
             searchTextField.backgroundColor = UIColor.systemGray6
             searchTextField.layer.cornerRadius = 15
             searchTextField.layer.masksToBounds = true
             searchTextField.borderStyle = .none
         }
-        
-        // 검색 바 자체 스타일링
+  
         searchBar.layer.cornerRadius = 15
         searchBar.layer.masksToBounds = true
         searchBar.backgroundImage = UIImage()
         searchBar.searchTextPositionAdjustment = UIOffset(horizontal: 10, vertical: 0)
         
-        // 검색 바 제약 조건 설정
         NSLayoutConstraint.activate([
             searchBar.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 10),
             searchBar.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 10),
@@ -156,27 +152,19 @@ class HomeViewController: UIViewController, CLLocationManagerDelegate, UICollect
         tableView.translatesAutoresizingMaskIntoConstraints = false
         contentView.addSubview(tableView)
         
-        // 테이블 뷰 셀 등록
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "AddressCell")
         
-        // 테이블 뷰 제약 조건 설정
         NSLayoutConstraint.activate([
             tableView.topAnchor.constraint(equalTo: searchBar.bottomAnchor, constant: 10),
             tableView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 10),
             tableView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -10)
         ])
         
-        // 테이블 뷰 높이 제약 조건 추가
         tableViewHeightConstraint = tableView.heightAnchor.constraint(equalToConstant: 0)
         tableViewHeightConstraint.isActive = true
-        
-        // 초기에는 테이블 뷰를 숨김
         tableView.isHidden = true
-        
-        // 테이블 뷰 contentSize 관찰
         tableView.addObserver(self, forKeyPath: "contentSize", options: .new, context: nil)
-        
-        // 그림자 효과 추가
+       
         tableView.layer.shadowColor = UIColor.black.cgColor
         tableView.layer.shadowOpacity = 0.2
         tableView.layer.shadowOffset = CGSize(width: 0, height: 2)
@@ -195,8 +183,7 @@ class HomeViewController: UIViewController, CLLocationManagerDelegate, UICollect
         recentPlacesLabel.font = UIFont.boldSystemFont(ofSize: 18)
         recentPlacesLabel.translatesAutoresizingMaskIntoConstraints = false
         contentView.addSubview(recentPlacesLabel)
-        
-        // 최근 방문한 장소 레이블 제약 조건 설정
+
         NSLayoutConstraint.activate([
             recentPlacesLabel.topAnchor.constraint(equalTo: searchBar.bottomAnchor, constant: 10),
             recentPlacesLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 20)
@@ -207,7 +194,7 @@ class HomeViewController: UIViewController, CLLocationManagerDelegate, UICollect
         let layout = UICollectionViewFlowLayout()
         layout.scrollDirection = .horizontal
         layout.minimumLineSpacing = 10
-        layout.itemSize = CGSize(width: 200, height: 200) // 이미지 높이에 맞게 크기 조정
+        layout.itemSize = CGSize(width: 200, height: 200)
         
         visitedCollectionView = UICollectionView(frame: .zero, collectionViewLayout: layout)
         visitedCollectionView.delegate = self
@@ -217,12 +204,12 @@ class HomeViewController: UIViewController, CLLocationManagerDelegate, UICollect
         visitedCollectionView.backgroundColor = .white
         contentView.addSubview(visitedCollectionView)
         
-        // 컬렉션 뷰 제약 조건 설정
+
         NSLayoutConstraint.activate([
             visitedCollectionView.topAnchor.constraint(equalTo: recentPlacesLabel.bottomAnchor, constant: 10),
             visitedCollectionView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 20),
             visitedCollectionView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -20),
-            visitedCollectionView.heightAnchor.constraint(equalToConstant: 200) // 이미지 높이에 맞게 크기 조정
+            visitedCollectionView.heightAnchor.constraint(equalToConstant: 200)
         ])
     }
     
@@ -232,8 +219,7 @@ class HomeViewController: UIViewController, CLLocationManagerDelegate, UICollect
         recommendedPlacesLabel.font = UIFont.boldSystemFont(ofSize: 18)
         recommendedPlacesLabel.translatesAutoresizingMaskIntoConstraints = false
         contentView.addSubview(recommendedPlacesLabel)
-        
-        // 추천 장소 레이블 제약 조건 설정
+
         NSLayoutConstraint.activate([
             recommendedPlacesLabel.topAnchor.constraint(equalTo: visitedCollectionView.bottomAnchor, constant: 10),
             recommendedPlacesLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 20)
@@ -244,7 +230,7 @@ class HomeViewController: UIViewController, CLLocationManagerDelegate, UICollect
         let layout = UICollectionViewFlowLayout()
         layout.scrollDirection = .horizontal
         layout.minimumLineSpacing = 10
-        layout.itemSize = CGSize(width: 200, height: 200) // 이미지 높이에 맞게 크기 조정
+        layout.itemSize = CGSize(width: 200, height: 200)
         
         recommendedCollectionView = UICollectionView(frame: .zero, collectionViewLayout: layout)
         recommendedCollectionView.delegate = self
@@ -253,20 +239,19 @@ class HomeViewController: UIViewController, CLLocationManagerDelegate, UICollect
         recommendedCollectionView.translatesAutoresizingMaskIntoConstraints = false
         recommendedCollectionView.backgroundColor = .white
         contentView.addSubview(recommendedCollectionView)
-        
-        // 컬렉션 뷰 제약 조건 설정
+
         NSLayoutConstraint.activate([
             recommendedCollectionView.topAnchor.constraint(equalTo: recommendedPlacesLabel.bottomAnchor, constant: 10),
             recommendedCollectionView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 20),
             recommendedCollectionView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -20),
-            recommendedCollectionView.heightAnchor.constraint(equalToConstant: 200), // 이미지 높이에 맞게 크기 조정
+            recommendedCollectionView.heightAnchor.constraint(equalToConstant: 200),
             recommendedCollectionView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -20)
         ])
     }
     
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
         if collectionView == visitedCollectionView {
-            return min(filteredAddresses.count, 5) // 최대 5개만 표시
+            return min(filteredAddresses.count, 5)
         } else {
             return recommendedPlaces.count
         }
@@ -326,8 +311,7 @@ class HomeViewController: UIViewController, CLLocationManagerDelegate, UICollect
     func searchPlaces(query: String) {
         let clientId = Bundle.main.NAVER_SEARCH_API_KEY_ID
         let clientSecret = Bundle.main.NAVER_SEARCH_API_KEY
-        
-        // query에 "가볼만한곳" 추가
+
         let fullQuery = "\(query) 가볼만한곳"
         
         let urlString = "https://openapi.naver.com/v1/search/local.json"
@@ -401,7 +385,6 @@ class HomeViewController: UIViewController, CLLocationManagerDelegate, UICollect
                 let json = try? JSON(data: data)
                 let status = json?["status"].string
                 if status == "OK" {
-                    // Street View 이미지 가져오기
                     let imageUrl = "https://maps.googleapis.com/maps/api/streetview"
                     let imageParameters: [String: Any] = [
                         "location": "\(location.coordinate.latitude),\(location.coordinate.longitude)",
@@ -417,7 +400,6 @@ class HomeViewController: UIViewController, CLLocationManagerDelegate, UICollect
                         }
                     }
                 } else {
-                    // 가장 가까운 Street View 위치를 찾음
                     if let panoId = json?["pano_id"].string {
                         let nearestImageUrl = "https://maps.googleapis.com/maps/api/streetview"
                         let nearestImageParameters: [String: Any] = [
@@ -452,15 +434,14 @@ class HomeViewController: UIViewController, CLLocationManagerDelegate, UICollect
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         print("Failed to find user's location: \(error.localizedDescription)")
     }
-    
-    // UISearchBarDelegate 메서드 추가
+
     func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
         if searchText.isEmpty {
             filteredAddresses = visitedAddresses
-            tableView.isHidden = true // 검색어가 없으면 테이블 뷰 숨김
+            tableView.isHidden = true
         } else {
-            filteredAddresses = visitedAddresses.filter { $0.0.contains(searchText) } // address로 검색
-            tableView.isHidden = false // 검색 결과가 있으면 테이블 뷰 표시
+            filteredAddresses = visitedAddresses.filter { $0.0.contains(searchText) }
+            tableView.isHidden = false
         }
         tableView.reloadData()
         
@@ -470,21 +451,19 @@ class HomeViewController: UIViewController, CLLocationManagerDelegate, UICollect
     @objc func resetSearchBar() {
         searchBar.text = ""
         filteredAddresses = visitedAddresses
-        tableView.isHidden = true // 테이블 뷰 숨김
+        tableView.isHidden = true
         tableView.reloadData()
     }
     
-    // UITableViewDataSource 메서드
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return filteredAddresses.count
     }
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "AddressCell", for: indexPath)
-        
-        // 인덱스 범위 확인
+
         guard indexPath.row < filteredAddresses.count else {
-            return cell // 빈 셀 반환 또는 기본 셀 반환
+            return cell
         }
         
         let (address, buildingName, _) = filteredAddresses[indexPath.row]
@@ -493,9 +472,8 @@ class HomeViewController: UIViewController, CLLocationManagerDelegate, UICollect
         } else {
             cell.textLabel?.text = "\(buildingName) - \(address)"
         }
-        
-        // 셀 스타일링
-        cell.backgroundColor = .white // 셀 배경은 흰색으로 유지
+
+        cell.backgroundColor = .white
         cell.textLabel?.textAlignment = .center
         
         return cell
@@ -561,7 +539,7 @@ class VisitedPlaceCell: UICollectionViewCell {
         
         addressLabel = UILabel()
         addressLabel.translatesAutoresizingMaskIntoConstraints = false
-        addressLabel.numberOfLines = 0 // 여러 줄 표시 가능하도록 설정
+        addressLabel.numberOfLines = 0
         addressLabel.textAlignment = .center
         addressLabel.font = UIFont.systemFont(ofSize: 14, weight: .medium)
         containerView.addSubview(addressLabel)
@@ -575,9 +553,9 @@ class VisitedPlaceCell: UICollectionViewCell {
             imageView.topAnchor.constraint(equalTo: containerView.topAnchor, constant: 5),
             imageView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 5),
             imageView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -5),
-            imageView.heightAnchor.constraint(equalToConstant: 120), // 이미지뷰 고정 높이
+            imageView.heightAnchor.constraint(equalToConstant: 120),
             
-            addressLabel.topAnchor.constraint(equalTo: imageView.bottomAnchor, constant: 10), // 간격 조정
+            addressLabel.topAnchor.constraint(equalTo: imageView.bottomAnchor, constant: 10),
             addressLabel.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 10),
             addressLabel.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -10),
             addressLabel.bottomAnchor.constraint(equalTo: containerView.bottomAnchor, constant: -10)
@@ -588,11 +566,4 @@ class VisitedPlaceCell: UICollectionViewCell {
         addressLabel.text = address
         imageView.image = image
     }
-}
-
-struct TrendingPlace {
-    let title: String
-    let adress: String
-    let latitude: Double
-    let longitude: Double
 }

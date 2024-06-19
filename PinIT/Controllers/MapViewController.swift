@@ -17,7 +17,7 @@ extension Notification.Name {
     static let didSaveLocation = Notification.Name("didSaveLocation")
 }
 
-class LocationManager { // 헬퍼
+class LocationManager {
     static let shared = LocationManager()
     
     private init() {}
@@ -41,6 +41,7 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, NMFMapView
     var loadedMarkers: [NMFMarker] = []
     var infoWindow: NMFInfoWindow?
     var selectedCategoryIndex = 0
+    var isFirstLocationUpdate = true
     
     @IBOutlet weak var naverMapView: NMFNaverMapView!
     @IBOutlet weak var zoomControlView: NMFZoomControlView!
@@ -78,8 +79,7 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, NMFMapView
         naverMapView.mapView.isTiltGestureEnabled = true
         naverMapView.mapView.isRotateGestureEnabled = true
         naverMapView.mapView.touchDelegate = self
-        
-        // 현재 위치 버튼 설정
+
         let currentLocationButton = UIButton(type: .custom)
         currentLocationButton.setImage(UIImage(systemName: "location.fill"), for: .normal)
         currentLocationButton.backgroundColor = .white
@@ -92,8 +92,7 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, NMFMapView
         currentLocationButton.addTarget(self, action: #selector(moveToCurrentLocation), for: .touchUpInside)
         
         view.addSubview(currentLocationButton)
-        
-        // 위치 추가 버튼 설정
+
         let saveLocationButton = UIButton(type: .custom)
         saveLocationButton.setImage(UIImage(systemName: "plus"), for: .normal)
         saveLocationButton.backgroundColor = .white
@@ -106,8 +105,7 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, NMFMapView
         saveLocationButton.addTarget(self, action: #selector(showSaveLocationOptions), for: .touchUpInside)
         
         view.addSubview(saveLocationButton)
-        
-        // 오토 레이아웃 제약 조건 설정
+
         currentLocationButton.translatesAutoresizingMaskIntoConstraints = false
         saveLocationButton.translatesAutoresizingMaskIntoConstraints = false
         
@@ -137,8 +135,7 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, NMFMapView
         categoryFilterButton.addTarget(self, action: #selector(toggleCategory), for: .touchUpInside)
         
         view.addSubview(categoryFilterButton)
-        
-        // 오토 레이아웃 제약 조건 설정
+
         categoryFilterButton.translatesAutoresizingMaskIntoConstraints = false
         
         NSLayoutConstraint.activate([
@@ -173,7 +170,6 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, NMFMapView
     var currentSnackbar: UILabel?
 
     func showSnackbar(message: String) {
-        // 기존 스낵바가 있으면 제거
         if let currentSnackbar = currentSnackbar {
             UIView.animate(withDuration: 0.3, animations: {
                 currentSnackbar.alpha = 0
@@ -182,7 +178,6 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, NMFMapView
             }
         }
 
-        // 새로운 스낵바 생성
         let snackbar = UILabel()
         snackbar.text = message
         snackbar.textAlignment = .center
@@ -209,14 +204,12 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, NMFMapView
                 snackbar.alpha = 0
             }) { _ in
                 snackbar.removeFromSuperview()
-                // 스낵바가 사라지면 currentSnackbar 변수도 nil로 설정
                 if self.currentSnackbar == snackbar {
                     self.currentSnackbar = nil
                 }
             }
         }
 
-        // currentSnackbar 변수에 새로 만든 스낵바 저장
         currentSnackbar = snackbar
     }
 
@@ -224,6 +217,7 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, NMFMapView
         guard let currentLocation = locationManager.location else { return }
         let coord = NMGLatLng(lat: currentLocation.coordinate.latitude, lng: currentLocation.coordinate.longitude)
         naverMapView.mapView.moveCamera(NMFCameraUpdate(scrollTo: coord))
+        isFirstLocationUpdate = false
     }
     
     @IBAction func saveMarkerLocations(_ sender: UIButton) {
@@ -257,8 +251,10 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, NMFMapView
     }
     
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        if let location = locations.last {
-            naverMapView.mapView.moveCamera(NMFCameraUpdate(scrollTo: NMGLatLng(lat: location.coordinate.latitude, lng: location.coordinate.longitude)))
+        if isFirstLocationUpdate, let location = locations.last {
+            let coord = NMGLatLng(lat: location.coordinate.latitude, lng: location.coordinate.longitude)
+            naverMapView.mapView.moveCamera(NMFCameraUpdate(scrollTo: coord))
+            isFirstLocationUpdate = false
         }
     }
     
@@ -276,12 +272,11 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, NMFMapView
             let buildingName = location["buildingName"] as? String ?? ""
             let fullAddress = location["fullAddress"] as? String ?? ""
             let marker = NMFMarker(position: NMGLatLng(lat: lat, lng: lng))
-            
-            // 마커 색상 및 크기 설정
+
             marker.iconImage = NMF_MARKER_IMAGE_BLACK
             marker.iconTintColor = UIColor(hex: location["categoryColor"] as? String ?? "#00FF00")
-            marker.width = 24  // 원하는 너비로 변경
-            marker.height = 34  // 원하는 높이로 변경
+            marker.width = 24
+            marker.height = 34
             
             marker.captionText = buildingName.isEmpty ? fullAddress : buildingName
             marker.subCaptionText = buildingName.isEmpty ? "" : fullAddress
@@ -338,22 +333,18 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, NMFMapView
             if let placemarks = placemarks, let placemark = placemarks.first {
                 var buildingName: String? = placemark.name
                 
-                // placemark.name에 subThoroughfare가 포함되어 있는지 확인
                 if let thoroughfare = placemark.thoroughfare, let name = placemark.name, name.contains(thoroughfare) {
                     buildingName = nil
                 }
                 if let addrList = placemark.addressDictionary?["FormattedAddressLines"] as? [String] {
                     var fullAddress = addrList.joined(separator: ", ")
                     
-                    // "대한민국" 문자열을 제거합니다.
                     if fullAddress.hasPrefix("대한민국") {
                         fullAddress = String(fullAddress.dropFirst("대한민국".count)).trimmingCharacters(in: .whitespaces)
                     } else if let commaIndex = fullAddress.firstIndex(of: ",") {
-                        // "대한민국"으로 시작하지 않으면 첫 번째 콤마가 나올 때까지 삭제합니다.
                         fullAddress = String(fullAddress[commaIndex...]).trimmingCharacters(in: .whitespaces)
                         fullAddress = String(fullAddress.dropFirst(", 대한민국".count)).trimmingCharacters(in: .whitespaces)
                     }
-                    // 쉼표를 찾고 첫 번째 쉼표 이후의 문자를 제거합니다.
                     if let commaIndex = fullAddress.firstIndex(of: ",") {
                         fullAddress = String(fullAddress[..<commaIndex])
                     }
@@ -366,10 +357,8 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, NMFMapView
     }
     
     func showInfoWindow(at position: NMGLatLng, with address: String) {
-        // 기존에 열려있는 InfoWindow 닫기
         infoWindow?.close()
-        
-        // InfoWindow 인스턴스 생성 및 구성
+    
         let infoWindow = NMFInfoWindow()
         let dataSource = CustomInfoWindowDataSource(title: address)
         infoWindow.dataSource = dataSource
@@ -378,7 +367,6 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, NMFMapView
         infoWindow.position = position
         infoWindow.open(with: naverMapView.mapView)
         
-        // 새로운 InfoWindow 저장
         self.infoWindow = infoWindow
     }
     
@@ -414,7 +402,7 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, NMFMapView
                 "buildingName": buildingName ?? "",
                 "fullAddress": address ?? "",
                 "isFavorite": false,
-                "categoryColor": "#00FF00", // 기본 색상
+                "categoryColor": "#00FF00",
                 "category": ""
             ]
             LocationManager.shared.saveLocations(locations: [locationDict])
@@ -431,19 +419,31 @@ class MapViewController: UIViewController, CLLocationManagerDelegate, NMFMapView
             return
         }
         
+        let buildingName: String
+        let fullAddress: String
+
+        if selectedMarker.subCaptionText.isEmpty {
+            buildingName = ""
+            fullAddress = selectedMarker.captionText
+        } else {
+            buildingName = selectedMarker.captionText
+            fullAddress = selectedMarker.subCaptionText
+        }
+
         let locationDict: [String: Any] = [
             "latitude": selectedMarker.position.lat,
             "longitude": selectedMarker.position.lng,
-            "buildingName": selectedMarker.captionText,
-            "fullAddress": selectedMarker.subCaptionText,
+            "buildingName": buildingName,
+            "fullAddress": fullAddress,
             "isFavorite": false,
-            "categoryColor": "#00FF00", // 기본 색상
+            "categoryColor": "#00FF00",
             "category": ""
         ]
         
         LocationManager.shared.saveLocations(locations: [locationDict])
         NotificationCenter.default.post(name: .didSaveLocation, object: nil)
     }
+
 }
 
 class CustomInfoWindowDataSource: NSObject, NMFOverlayImageDataSource {
@@ -458,13 +458,12 @@ class CustomInfoWindowDataSource: NSObject, NMFOverlayImageDataSource {
         let label = UILabel()
         label.text = title
         label.textAlignment = .center
-        label.font = UIFont.systemFont(ofSize: 12) // 글씨 크기 설정
+        label.font = UIFont.systemFont(ofSize: 12)
         label.backgroundColor = UIColor.white
         label.textColor = UIColor.black
         label.numberOfLines = 0
         label.sizeToFit()
-        
-        // 패딩 추가
+
         let padding: CGFloat = 8
         let paddedLabel = UIView(frame: CGRect(x: 0, y: 0, width: label.frame.width + padding * 2, height: label.frame.height + padding * 2))
         paddedLabel.backgroundColor = UIColor.white
